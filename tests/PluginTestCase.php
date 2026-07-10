@@ -2,6 +2,7 @@
 
 namespace Plugins\Sirsoft\MessageBizppurio\Tests;
 
+use App\Extension\HookManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,8 +25,6 @@ abstract class PluginTestCase extends TestCase
 
     /**
      * 테스트 환경 설정
-     *
-     * @return void
      */
     protected function setUp(): void
     {
@@ -36,8 +35,6 @@ abstract class PluginTestCase extends TestCase
 
     /**
      * tearDown 에 HookManager 상태 복원.
-     *
-     * @return void
      */
     protected function tearDown(): void
     {
@@ -48,12 +45,10 @@ abstract class PluginTestCase extends TestCase
 
     /**
      * HookManager static $hooks / $filters / $dispatching 를 스냅샷.
-     *
-     * @return void
      */
     private function snapshotHookManager(): void
     {
-        $ref = new \ReflectionClass(\App\Extension\HookManager::class);
+        $ref = new \ReflectionClass(HookManager::class);
         $this->hookSnapshot = [
             'hooks' => $ref->getProperty('hooks')->getValue(),
             'filters' => $ref->getProperty('filters')->getValue(),
@@ -63,8 +58,6 @@ abstract class PluginTestCase extends TestCase
 
     /**
      * 스냅샷 시점으로 HookManager 복원.
-     *
-     * @return void
      */
     private function restoreHookManager(): void
     {
@@ -72,7 +65,7 @@ abstract class PluginTestCase extends TestCase
             return;
         }
 
-        $ref = new \ReflectionClass(\App\Extension\HookManager::class);
+        $ref = new \ReflectionClass(HookManager::class);
         $ref->getProperty('hooks')->setValue(null, $this->hookSnapshot['hooks']);
         $ref->getProperty('filters')->setValue(null, $this->hookSnapshot['filters']);
         $ref->getProperty('dispatching')->setValue(null, $this->hookSnapshot['dispatching']);

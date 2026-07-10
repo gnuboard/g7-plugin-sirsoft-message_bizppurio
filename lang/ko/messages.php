@@ -30,4 +30,15 @@ return [
         'permanent_failure' => '영구 실패',
         'balance_low' => '잔액 부족',
     ],
+
+    // 발송 엔진 오류 (API 클라이언트·토큰·발송 Job)
+    'error' => [
+        'credentials_missing' => '비즈뿌리오 아이디와 비밀번호를 먼저 설정하세요.',
+        'token_issue_failed' => '비즈뿌리오 인증 토큰 발급에 실패했습니다.',
+        'send_failed' => '메시지 발송 요청에 실패했습니다.',
+        'send_retryable' => '메시지 발송이 일시적으로 실패했습니다. (코드: :code)',
+        'invalid_response' => '비즈뿌리오 응답을 해석할 수 없습니다.',
+        'kakao_credentials_missing' => '카카오 관리 API 사용을 위해 아이디와 API 키를 먼저 설정하세요.',
+        'kakao_request_failed' => '카카오 관리 API 요청에 실패했습니다.',
+    ],
 ];

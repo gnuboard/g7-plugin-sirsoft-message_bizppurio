@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugins\Sirsoft\MessageBizppurio\Providers;
 
 use App\Extension\BasePluginServiceProvider;
+use Plugins\Sirsoft\MessageBizppurio\Services\BizppurioTokenService;
 
 /**
  * 비즈뿌리오 메시징 플러그인 서비스 프로바이더.
@@ -36,7 +37,7 @@ class MessageBizppurioServiceProvider extends BasePluginServiceProvider
      * @var array<int, class-string>
      */
     protected array $cacheServices = [
-        // Phase 2: BizppurioTokenService::class
+        BizppurioTokenService::class,
     ];
 
     /**
@@ -44,8 +45,6 @@ class MessageBizppurioServiceProvider extends BasePluginServiceProvider
      *
      * 백엔드 다국어는 lang/{ko,en}/*.php 에 두고 `$this->translationNamespace()`
      * (= 플러그인 식별자) 네임스페이스로 로드한다.
-     *
-     * @return void
      */
     protected function loadExtensionTranslations(): void
     {
