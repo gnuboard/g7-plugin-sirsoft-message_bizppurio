@@ -5,6 +5,8 @@ namespace Plugins\Sirsoft\MessageBizppurio;
 use App\Enums\ExtensionOwnerType;
 use App\Extension\AbstractPlugin;
 use App\Extension\Helpers\ExtensionMenuSyncHelper;
+use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
+use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
 
 /**
  * 비즈뿌리오 메시징 플러그인
@@ -356,12 +358,17 @@ class Plugin extends AbstractPlugin
     /**
      * 훅 리스너 목록 반환
      *
-     * Phase 3~6 에서 채널 등록/발송 위임/webhook 리스너를 추가한다.
+     * Phase 3: 채널 등록/readiness/3영역 노출(RegisterNotificationChannelsListener) +
+     * 비회원 주문 전화번호 주입(GuestPhoneExtractListener).
+     * Phase 4~6 에서 webhook/알림톡 발송 리스너를 추가한다.
      *
      * @return array<class-string>
      */
     public function getHookListeners(): array
     {
-        return [];
+        return [
+            RegisterNotificationChannelsListener::class,
+            GuestPhoneExtractListener::class,
+        ];
     }
 }

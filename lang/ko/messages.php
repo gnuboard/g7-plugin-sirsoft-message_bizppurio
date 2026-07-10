@@ -31,6 +31,27 @@ return [
         'balance_low' => '잔액 부족',
     ],
 
+    // 알림 채널 메타 (core.notification.filter_available_channels)
+    'channels' => [
+        'source_label' => '비즈뿌리오',
+        'sms' => [
+            'name' => 'SMS/LMS 문자',
+            'description' => '비즈뿌리오를 통해 문자(SMS/LMS)로 알림을 발송합니다.',
+        ],
+        'alimtalk' => [
+            'name' => '카카오 알림톡',
+            'description' => '비즈뿌리오를 통해 카카오 알림톡으로 알림을 발송합니다.',
+        ],
+    ],
+
+    // 채널 준비 상태 사유 (core.notification.channel_readiness)
+    'readiness' => [
+        'sms_credentials_missing' => '비즈뿌리오 아이디와 비밀번호를 설정하세요.',
+        'sms_sender_number_missing' => '발신번호를 설정하세요.',
+        'alimtalk_api_key_missing' => '카카오 관리 API 키를 설정하세요.',
+        'alimtalk_sender_key_missing' => '알림톡 발신프로필 키를 설정하세요.',
+    ],
+
     // 발송 엔진 오류 (API 클라이언트·토큰·발송 Job)
     'error' => [
         'credentials_missing' => '비즈뿌리오 아이디와 비밀번호를 먼저 설정하세요.',

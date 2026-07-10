@@ -31,6 +31,27 @@ return [
         'balance_low' => 'Insufficient Balance',
     ],
 
+    // 알림 채널 메타 (core.notification.filter_available_channels)
+    'channels' => [
+        'source_label' => 'Bizppurio',
+        'sms' => [
+            'name' => 'SMS/LMS Text',
+            'description' => 'Send notifications as SMS/LMS text messages via Bizppurio.',
+        ],
+        'alimtalk' => [
+            'name' => 'Kakao Alimtalk',
+            'description' => 'Send notifications as Kakao Alimtalk messages via Bizppurio.',
+        ],
+    ],
+
+    // 채널 준비 상태 사유 (core.notification.channel_readiness)
+    'readiness' => [
+        'sms_credentials_missing' => 'Please set the Bizppurio ID and password.',
+        'sms_sender_number_missing' => 'Please set the sender number.',
+        'alimtalk_api_key_missing' => 'Please set the Kakao management API key.',
+        'alimtalk_sender_key_missing' => 'Please set the Alimtalk sender profile key.',
+    ],
+
     // 발송 엔진 오류 (API 클라이언트·토큰·발송 Job)
     'error' => [
         'credentials_missing' => 'Please set the Bizppurio ID and password first.',
