@@ -1,0 +1,60 @@
+{
+    "name": "Bizppurio Messaging",
+    "description": "Bizppurio (Daou Tech) SMS/LMS and KakaoTalk alimtalk messaging plugin.",
+    "settings": {
+        "title": "Bizppurio Messaging Settings",
+        "description": "Manage Bizppurio integration credentials and sending options.",
+        "save": "Save",
+        "saving": "Saving...",
+        "save_success": "Settings saved.",
+        "save_failed": "Failed to save settings.",
+        "sections": {
+            "api": {
+                "title": "API Integration",
+                "description": "Credentials shared by the sending system and the Kakao management system."
+            },
+            "sending": {
+                "title": "Sending Options",
+                "description": "Sender information used for SMS and alimtalk delivery."
+            },
+            "integration": {
+                "title": "Integration Guide",
+                "description": "The webhook address that receives delivery results."
+            }
+        },
+        "fields": {
+            "environment": {
+                "label": "Environment",
+                "hint": "Select the inspection (dev) or production environment. The sending API domain differs by environment.",
+                "option_dev": "Inspection (Dev)",
+                "option_live": "Production"
+            },
+            "bizppurio_id": {
+                "label": "Bizppurio ID",
+                "hint": "The Bizppurio account ID used for both sending and Kakao management."
+            },
+            "password": {
+                "label": "Password",
+                "hint": "The Bizppurio password used to issue the sending token."
+            },
+            "api_key": {
+                "label": "API Key",
+                "hint": "The API key is issued after you submit it together with your ID to Bizppurio customer support."
+            },
+            "sender_number": {
+                "label": "Sender Number",
+                "hint": "The sender phone number used for SMS and alimtalk delivery."
+            },
+            "sender_key": {
+                "label": "Alimtalk Sender Profile Key",
+                "hint": "The 40-character sender profile key used for alimtalk delivery and template lookup."
+            }
+        },
+        "webhook": {
+            "label": "Delivery Result Address (webhook)",
+            "hint": "Register this address with the Bizppurio business team as the URL PUSH endpoint so delivery results are recorded automatically.",
+            "copy": "Copy",
+            "copied": "Copied."
+        }
+    }
+}
