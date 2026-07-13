@@ -29,7 +29,7 @@ axes:
   channel: [sms, alimtalk]
   recipient: [member, guest]
   readiness_state: [ready, missing_credentials, missing_sender]
-  environment: [dev, live]
+  test_mode: [on, off]
 
 exclusions:
   - { channel: alimtalk, recipient: guest, reason: "알림톡 실발송은 Phase 6 — 이번 Phase 는 채널 등록/readiness 만" }

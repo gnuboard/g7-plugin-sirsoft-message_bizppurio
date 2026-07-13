@@ -55,19 +55,33 @@ describe('plugin_settings.json — 자동바인딩', () => {
     });
 });
 
-describe('plugin_settings.json — 3 섹션', () => {
+describe('plugin_settings.json — 섹션', () => {
     it.each([
+        ['info_panel', '상단 안내 패널'],
         ['section_api', 'API 연동'],
         ['section_sending', '발송 설정'],
-        ['section_integration', '연동 안내'],
+        ['report_section', '리포트 수신 설정'],
     ])('%s 섹션이 존재한다', (id) => {
         expect(findById(root, id)).toBeTruthy();
+    });
+
+    it('검수 모드 카드에 is_test_mode Toggle 이 있다', () => {
+        const card = findById(root, 'test_mode_card');
+        expect(card).toBeTruthy();
+        const raw = JSON.stringify(card);
+        expect(raw).toContain('"Toggle"');
+        expect(raw).toContain('is_test_mode');
+    });
+
+    it('운영 모드(검수 off) 경고 박스가 조건부로 존재한다', () => {
+        const warning = findById(root, 'live_mode_warning');
+        expect(warning).toBeTruthy();
+        expect((warning as { if?: string }).if).toContain('!_local.form.is_test_mode');
     });
 });
 
 describe('plugin_settings.json — 입력 필드 6종', () => {
     it.each([
-        'environment',
         'bizppurio_id',
         'password',
         'api_key',
@@ -91,21 +105,37 @@ describe('plugin_settings.json — 입력 필드 6종', () => {
         }
     });
 
-    it('environment 는 dev/live 옵션 Select 이다', () => {
-        const select = findInputByName(root, 'environment');
-        const options = (select?.children ?? []).map(
-            (c) => (c.props as { value?: string } | undefined)?.value
-        );
-        expect(options).toEqual(['dev', 'live']);
+});
+
+describe('plugin_settings.json — 리포트 수신 설정', () => {
+    it('report_url 데이터소스가 조회 엔드포인트를 호출한다', () => {
+        const sources = (root as { data_sources?: AnyNode[] }).data_sources ?? [];
+        const reportUrl = sources.find((s) => s.id === 'report_url');
+        expect(reportUrl).toBeTruthy();
+        expect(reportUrl?.endpoint).toBe('/api/plugins/sirsoft-message_bizppurio/admin/report-url');
+    });
+
+    it('리포트 섹션에 조회값(fallback 웹훅 경로) readonly 표시 + 복사 버튼이 있다', () => {
+        const section = findById(root, 'report_section');
+        const raw = JSON.stringify(section);
+        expect(raw).toContain('report_url?.data?.url');
+        expect(raw).toContain('/api/plugins/sirsoft-message_bizppurio/webhook');
+        expect(raw).toContain('"readOnly":true');
+        expect(raw).toContain('copyToClipboard');
     });
 });
 
-describe('plugin_settings.json — webhook 안내', () => {
-    it('연동 안내 섹션에 고정 webhook 경로가 readonly 로 표시된다', () => {
-        const section = findById(root, 'section_integration');
-        const inputs = JSON.stringify(section);
-        expect(inputs).toContain('/api/plugins/sirsoft-message_bizppurio/webhook');
-        expect(inputs).toContain('"readOnly":true');
+describe('plugin_settings.json — 필드 인라인 에러', () => {
+    it.each([
+        'bizppurio_id',
+        'password',
+        'api_key',
+        'sender_number',
+        'sender_key',
+    ])('%s 필드에 인라인 에러 노드가 존재한다', (name) => {
+        const errorNode = findById(root, `field_${name}_error`);
+        expect(errorNode).toBeTruthy();
+        expect((errorNode as { if?: string }).if).toContain(`_local.errors?.${name}`);
     });
 });
 
@@ -124,7 +154,7 @@ describe('plugin_settings.json — 저장 버튼', () => {
 
     it('등록된 핸들러만 사용한다 (오탈자 핸들러 없음)', () => {
         const handlers = collectHandlers(layout);
-        const allowed = ['apiCall', 'setState', 'toast', 'navigate', 'sequence', 'refetchDataSource', 'scrollIntoView'];
+        const allowed = ['apiCall', 'setState', 'toast', 'navigate', 'sequence', 'refetchDataSource', 'scrollIntoView', 'copyToClipboard'];
         for (const h of handlers) {
             expect(allowed).toContain(h);
         }

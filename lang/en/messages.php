@@ -52,6 +52,13 @@ return [
         'alimtalk_sender_key_missing' => 'Please set the Alimtalk sender profile key.',
     ],
 
+    // 설정 검증 — 운영(live) 환경 필수 자격증명 항목 라벨 (validation.attributes 병합용)
+    'settings' => [
+        'bizppurio_id_attribute' => 'Bizppurio ID',
+        'password_attribute' => 'Password',
+        'sender_number_attribute' => 'Sender Number',
+    ],
+
     // 발송 엔진 오류 (API 클라이언트·토큰·발송 Job)
     'error' => [
         'credentials_missing' => 'Please set the Bizppurio ID and password first.',

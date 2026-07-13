@@ -125,9 +125,11 @@ class BizppurioApiClient
      */
     private function baseUrl(): string
     {
-        $environment = (string) $this->pluginSettings->get(self::PLUGIN_IDENTIFIER, 'environment', 'dev');
+        // 검수 모드(is_test_mode)가 꺼져 있으면 운영 도메인으로 발송한다. 기본값(미설정)은
+        // 안전하게 검수(true)로 간주해 운영 발송이 우발적으로 일어나지 않도록 한다.
+        $isTestMode = (bool) $this->pluginSettings->get(self::PLUGIN_IDENTIFIER, 'is_test_mode', true);
 
-        return $environment === 'live' ? self::HOST_LIVE : self::HOST_DEV;
+        return $isTestMode ? self::HOST_DEV : self::HOST_LIVE;
     }
 
     /**

@@ -1,6 +1,6 @@
 {
     "name": "Bizppurio Messaging",
-    "description": "Bizppurio (Daou Tech) SMS/LMS and KakaoTalk alimtalk messaging plugin.",
+    "description": "Bizppurio SMS/LMS and KakaoTalk alimtalk messaging plugin.",
     "settings": {
         "title": "Bizppurio Messaging Settings",
         "description": "Manage Bizppurio integration credentials and sending options.",
@@ -8,6 +8,16 @@
         "saving": "Saving...",
         "save_success": "Settings saved.",
         "save_failed": "Failed to save settings.",
+        "info": {
+            "credentials": "Enter the integration credentials (ID, password, API key) used for sending and Kakao management, along with the sender information. Verify every value before turning off test mode and switching to production.",
+            "report": "To automatically receive delivery results (success/failure) and record them in the history, register the report endpoint below with Bizppurio."
+        },
+        "test_mode": {
+            "label": "Test Mode",
+            "hint": "In test mode, messages are sent to the Bizppurio inspection (dev) domain. Turn it off to send through the production domain."
+        },
+        "live_mode_warning_title": "Sending in production",
+        "live_mode_warning_body": "Test mode is off, so real SMS and alimtalk messages are sent to actual customers and sending fees are charged. Keep test mode on while inspecting.",
         "sections": {
             "api": {
                 "title": "API Integration",
@@ -16,19 +26,9 @@
             "sending": {
                 "title": "Sending Options",
                 "description": "Sender information used for SMS and alimtalk delivery."
-            },
-            "integration": {
-                "title": "Integration Guide",
-                "description": "The webhook address that receives delivery results."
             }
         },
         "fields": {
-            "environment": {
-                "label": "Environment",
-                "hint": "Select the inspection (dev) or production environment. The sending API domain differs by environment.",
-                "option_dev": "Inspection (Dev)",
-                "option_live": "Production"
-            },
             "bizppurio_id": {
                 "label": "Bizppurio ID",
                 "hint": "The Bizppurio account ID used for both sending and Kakao management."
@@ -50,11 +50,12 @@
                 "hint": "The 40-character sender profile key used for alimtalk delivery and template lookup."
             }
         },
-        "webhook": {
-            "label": "Delivery Result Address (webhook)",
-            "hint": "Register this address with the Bizppurio business team as the URL PUSH endpoint so delivery results are recorded automatically.",
+        "report": {
+            "section_title": "Report Endpoint",
+            "hint": "Bizppurio can push each SMS/alimtalk delivery result (success/failure) to this address (URL PUSH). Register it with the Bizppurio business team (or the report settings in the console).",
+            "note": "Once registered, delivery results are recorded in the history so you can verify actual delivery. Before registration only the send request is confirmed; the final result (success/failure) is not updated.",
             "copy": "Copy",
-            "copied": "Copied."
+            "copied": "Report endpoint copied to clipboard."
         }
     }
 }

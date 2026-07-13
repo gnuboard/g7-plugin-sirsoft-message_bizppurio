@@ -26,12 +26,12 @@ class BizppurioApiClientTest extends PluginTestCase
         'content' => ['sms' => ['message' => 'hi']],
     ];
 
-    private function makeSettings(string $environment = 'dev'): PluginSettingsService
+    private function makeSettings(bool $isTestMode = true): PluginSettingsService
     {
         $mock = Mockery::mock(PluginSettingsService::class);
         $mock->shouldReceive('get')
-            ->with(self::IDENTIFIER, 'environment', 'dev')
-            ->andReturn($environment);
+            ->with(self::IDENTIFIER, 'is_test_mode', true)
+            ->andReturn($isTestMode);
 
         return $mock;
     }
@@ -88,13 +88,13 @@ class BizppurioApiClientTest extends PluginTestCase
         Http::assertSentCount(2);
     }
 
-    public function test_운영_환경은_live_도메인_호출(): void
+    public function test_운영_모드는_live_도메인_호출(): void
     {
         Http::fake([
             'api.bizppurio.com/*' => Http::response(['code' => 1000], 200),
         ]);
 
-        $client = new BizppurioApiClient($this->makeToken('T'), $this->makeSettings('live'));
+        $client = new BizppurioApiClient($this->makeToken('T'), $this->makeSettings(false));
         $client->sendMessage($this->payload);
 
         Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://api.bizppurio.com'));

@@ -64,8 +64,9 @@ class InstallationTest extends PluginTestCase
         // 비크리덴셜 필드는 존재하되 sensitive 아님
         $this->assertArrayHasKey('bizppurio_id', $schema);
         $this->assertArrayHasKey('sender_number', $schema);
-        $this->assertArrayHasKey('environment', $schema);
-        $this->assertSame('dev', $schema['environment']['default']);
+        $this->assertArrayHasKey('is_test_mode', $schema);
+        $this->assertSame('boolean', $schema['is_test_mode']['type']);
+        $this->assertTrue($schema['is_test_mode']['default']);
     }
 
     public function test_defaults_json의_크리덴셜은_expose_false다(): void

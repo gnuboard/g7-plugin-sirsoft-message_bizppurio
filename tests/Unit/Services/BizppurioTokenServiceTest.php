@@ -48,9 +48,9 @@ class BizppurioTokenServiceTest extends PluginTestCase
     }
 
     /**
-     * bizppurio_id/password/environment 를 반환하는 설정 mock.
+     * bizppurio_id/password/is_test_mode 를 반환하는 설정 mock.
      *
-     * @param  array<string, string>  $settings
+     * @param  array<string, mixed>  $settings
      */
     private function makeSettings(array $settings): PluginSettingsService
     {
@@ -69,7 +69,7 @@ class BizppurioTokenServiceTest extends PluginTestCase
         $store = [];
         $service = new BizppurioTokenService(
             $this->makeCache($store),
-            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'environment' => 'dev']),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
         );
 
         $this->assertSame('TOKEN_A', $service->getToken());
@@ -90,7 +90,7 @@ class BizppurioTokenServiceTest extends PluginTestCase
         $store = [];
         $service = new BizppurioTokenService(
             $this->makeCache($store),
-            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'environment' => 'dev']),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
         );
 
         $this->assertSame('TOKEN_A', $service->getToken());
@@ -99,7 +99,7 @@ class BizppurioTokenServiceTest extends PluginTestCase
         Http::assertSentCount(2);
     }
 
-    public function test_검수_환경은_dev_도메인을_호출한다(): void
+    public function test_검수_모드는_dev_도메인을_호출한다(): void
     {
         Http::fake([
             'dev-api.bizppurio.com/*' => Http::response(['accesstoken' => 'T', 'type' => 'Bearer'], 200),
@@ -108,11 +108,28 @@ class BizppurioTokenServiceTest extends PluginTestCase
         $store = [];
         $service = new BizppurioTokenService(
             $this->makeCache($store),
-            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'environment' => 'dev']),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
         );
 
         $service->getToken();
         Http::assertSent(fn ($request) => str_contains($request->url(), 'dev-api.bizppurio.com'));
+    }
+
+    public function test_운영_모드는_live_도메인을_호출한다(): void
+    {
+        Http::fake([
+            'api.bizppurio.com/*' => Http::response(['accesstoken' => 'T', 'type' => 'Bearer'], 200),
+        ]);
+
+        $store = [];
+        $service = new BizppurioTokenService(
+            $this->makeCache($store),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => false]),
+        );
+
+        $service->getToken();
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'api.bizppurio.com')
+            && ! str_contains($request->url(), 'dev-api.bizppurio.com'));
     }
 
     public function test_자격증명_미설정시_예외(): void
@@ -134,7 +151,7 @@ class BizppurioTokenServiceTest extends PluginTestCase
         $store = [];
         $service = new BizppurioTokenService(
             $this->makeCache($store),
-            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'environment' => 'dev']),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
         );
 
         $this->expectException(BizppurioApiException::class);

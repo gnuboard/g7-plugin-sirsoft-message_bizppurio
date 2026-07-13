@@ -7,11 +7,12 @@ use App\Extension\AbstractPlugin;
 use App\Extension\Helpers\ExtensionMenuSyncHelper;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
+use Plugins\Sirsoft\MessageBizppurio\Listeners\ValidateBizppurioSettingsListener;
 
 /**
- * 비즈뿌리오 메시징 플러그인
+ * 비즈뿌리오 메시지 발송 플러그인
  *
- * 비즈뿌리오(다우기술) 연동 SMS/LMS·카카오 알림톡 자동발송을 제공합니다.
+ * 비즈뿌리오 연동 SMS/LMS·카카오 알림톡 발송을 제공합니다.
  * 코어 알림 시스템의 채널로 문자·알림톡을 발송하고, 발송 결과를 webhook 으로
  * 수신하여 이력에 기록합니다.
  */
@@ -146,11 +147,11 @@ class Plugin extends AbstractPlugin
     {
         return [
             'name' => [
-                'ko' => '비즈뿌리오 메시징',
+                'ko' => '비즈뿌리오 메시지 발송',
                 'en' => 'Bizppurio Messaging',
             ],
             'description' => [
-                'ko' => '비즈뿌리오 메시징 플러그인이 제공하는 권한',
+                'ko' => '비즈뿌리오 메시지 발송 플러그인이 제공하는 권한',
                 'en' => 'Permissions provided by the Bizppurio Messaging plugin',
             ],
             'categories' => [
@@ -203,14 +204,13 @@ class Plugin extends AbstractPlugin
     public function getSettingsSchema(): array
     {
         return [
-            'environment' => [
-                'type' => 'enum',
-                'options' => ['dev', 'live'],
-                'default' => 'dev',
-                'label' => ['ko' => '연동 환경', 'en' => 'Environment'],
+            'is_test_mode' => [
+                'type' => 'boolean',
+                'default' => true,
+                'label' => ['ko' => '검수 모드', 'en' => 'Test Mode'],
                 'hint' => [
-                    'ko' => '검수(개발) 또는 운영 환경을 선택합니다. 발송 API 도메인이 환경에 따라 분기됩니다.',
-                    'en' => 'Select the inspection (dev) or production environment. The sending API domain differs by environment.',
+                    'ko' => '검수 모드를 끄면 운영 환경으로 발송됩니다. 발송 API 도메인이 환경에 따라 분기됩니다.',
+                    'en' => 'Turn off test mode to send in the production environment. The sending API domain differs by environment.',
                 ],
                 'required' => false,
             ],
@@ -281,7 +281,7 @@ class Plugin extends AbstractPlugin
     public function getConfigValues(): array
     {
         return [
-            'environment' => 'dev',
+            'is_test_mode' => true,
             'bizppurio_id' => '',
             'password' => '',
             'api_key' => '',
@@ -369,6 +369,7 @@ class Plugin extends AbstractPlugin
         return [
             RegisterNotificationChannelsListener::class,
             GuestPhoneExtractListener::class,
+            ValidateBizppurioSettingsListener::class,
         ];
     }
 }
