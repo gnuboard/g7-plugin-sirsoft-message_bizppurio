@@ -89,6 +89,33 @@ class BizppurioKakaoApiClientTest extends PluginTestCase
             && $request['templateName'] === 'T');
     }
 
+    public function test_이미지_업로드는_multipart로_전송하고_ur_l을_받는다(): void
+    {
+        Http::fake([
+            'kapi.ppurio.com/v3/kakao/image/*' => Http::response([
+                'code' => '200',
+                'image' => 'https://mud-kage.kakao.com/dn/xyz/img.jpg',
+            ], 200),
+        ]);
+
+        $path = tempnam(sys_get_temp_dir(), 'img');
+        file_put_contents($path, 'bytes');
+
+        $result = $this->client()->uploadTemplateImage($path, 'banner.jpg');
+
+        @unlink($path);
+
+        $this->assertSame('https://mud-kage.kakao.com/dn/xyz/img.jpg', $result['image']);
+        Http::assertSent(function ($request) {
+            // multipart 요청은 배열 접근($request['key'])이 불가하므로 URL·메서드·multipart 여부로 검증
+            $bodyData = collect($request->data())->keyBy('name');
+
+            return str_contains($request->url(), '/v3/kakao/image/alimtalk/template')
+                && $request->isMultipart()
+                && ($bodyData['bizId']['contents'] ?? null) === 'biz01';
+        });
+    }
+
     public function test_자격증명_미설정시_예외(): void
     {
         $client = new BizppurioKakaoApiClient(

@@ -47,8 +47,8 @@ describe('plugin_settings.json — 레이아웃 메타/권한', () => {
 });
 
 describe('plugin_settings.json — 자동바인딩', () => {
-    it('컨테이너가 dataKey=form + trackChanges 로 자동바인딩한다', () => {
-        const container = findById(root, 'plugin_settings_content');
+    it('환경설정 탭 패널이 dataKey=form + trackChanges 로 자동바인딩한다', () => {
+        const container = findById(root, 'connection_tab_panel');
         expect(container).toBeTruthy();
         expect((container as { dataKey?: string }).dataKey).toBe('form');
         expect((container as { trackChanges?: boolean }).trackChanges).toBe(true);
@@ -154,7 +154,13 @@ describe('plugin_settings.json — 저장 버튼', () => {
 
     it('등록된 핸들러만 사용한다 (오탈자 핸들러 없음)', () => {
         const handlers = collectHandlers(layout);
-        const allowed = ['apiCall', 'setState', 'toast', 'navigate', 'sequence', 'refetchDataSource', 'scrollIntoView', 'copyToClipboard'];
+        const allowed = [
+            'apiCall', 'setState', 'toast', 'navigate', 'sequence',
+            'refetchDataSource', 'scrollIntoView', 'copyToClipboard',
+            'openModal', 'closeModal', 'replaceUrl',
+            'sirsoft-message_bizppurio.insertVariable',
+            'sirsoft-message_bizppurio.uploadTemplateImage',
+        ];
         for (const h of handlers) {
             expect(allowed).toContain(h);
         }

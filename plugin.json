@@ -18,6 +18,13 @@
     },
     "github_url": "https://github.com/gnuboard/g7-plugin-sirsoft-message_bizppurio",
     "github_changelog_url": "https://github.com/gnuboard/g7-plugin-sirsoft-message_bizppurio/blob/main/CHANGELOG.md",
+    "assets": {
+        "js": {
+            "entry": "resources/js/index.ts",
+            "output": "dist/js/plugin.iife.js"
+        },
+        "handlers": true
+    },
     "loading": {
         "strategy": "global",
         "priority": 100

@@ -73,5 +73,55 @@ return [
         'invalid_response' => '비즈뿌리오 응답을 해석할 수 없습니다.',
         'kakao_credentials_missing' => '카카오 관리 API 사용을 위해 아이디와 API 키를 먼저 설정하세요.',
         'kakao_request_failed' => '카카오 관리 API 요청에 실패했습니다.',
+        'sender_key_missing' => '알림톡 발신프로필 키를 먼저 설정하세요.',
+    ],
+
+    // 알림톡 템플릿 관리 (Phase 5)
+    'template' => [
+        // 액션 결과 메시지
+        'created' => '알림톡 템플릿을 등록했습니다.',
+        'created_requested' => '알림톡 템플릿을 등록하고 검수를 요청했습니다.',
+        'updated' => '알림톡 템플릿을 수정했습니다.',
+        'deleted' => '알림톡 템플릿을 삭제했습니다.',
+        'requested' => '검수를 요청했습니다.',
+        'request_canceled' => '검수 요청을 취소했습니다.',
+        'stopped' => '템플릿을 중지했습니다.',
+        'resumed' => '템플릿 중지를 해제했습니다.',
+        'approval_canceled' => '승인을 취소했습니다.',
+        'released' => '휴면을 해제했습니다.',
+
+        // 상태 배지 (serviceStatus)
+        'status' => [
+            'sendable' => '발송가능',
+            'inspecting' => '검수중',
+            'rejected' => '반려',
+            'uninspected' => '미검수',
+            'stopped' => '중지',
+            'blocked' => '차단',
+            'dormant' => '휴면',
+            'unknown' => '알 수 없음',
+        ],
+
+        // 템플릿 유형 (templateEmphasizeType)
+        'emphasize_type' => [
+            'none' => '기본형',
+            'text' => '강조표기형',
+            'image' => '이미지형',
+            'item_list' => '아이템리스트형',
+        ],
+
+        // 검증 속성 라벨 (FormRequest attributes)
+        'fields' => [
+            'name' => '템플릿명',
+            'content' => '템플릿 내용',
+            'category' => '카테고리',
+            'emphasize_type' => '템플릿 유형',
+            'code' => '템플릿 코드',
+            'title' => '강조표기 문구',
+            'subtitle' => '보조 문구',
+            'image' => '이미지',
+            'image_name' => '이미지 파일명',
+            'image_url' => '이미지 링크',
+        ],
     ],
 ];

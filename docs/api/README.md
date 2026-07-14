@@ -4,10 +4,11 @@
 > 아래 표는 자동 생성됩니다. 각 문서를 열면 엔드포인트별 파라미터·응답·예시를 볼 수 있습니다.
 
 <!-- @generated:start:api-readme-index -->
-- **문서 수**: 2 · **엔드포인트 수**: 2
+- **문서 수**: 3 · **엔드포인트 수**: 16
 
 | 문서 | 도메인 | 엔드포인트 |
 | --- | --- | --- |
+| [alimtalk-templates.md](alimtalk-templates.md) | `alimtalk-templates` | 14 |
 | [report.md](report.md) | `report` | 1 |
 | [webhook.md](webhook.md) | `webhook` | 1 |
 

@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnforceIdentityPolicy;
 use App\Http\Middleware\RefreshTokenExpiration;
 use Illuminate\Support\Facades\Route;
+use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\AlimtalkTemplateController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\BizppurioWebhookController;
 use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
 
@@ -45,4 +46,40 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->g
         ]);
     })->middleware('permission:admin,core.plugins.read')
         ->name('report.url');
+
+    /*
+    |----------------------------------------------------------------------
+    | 알림톡 템플릿 관리 (Phase 5) — 카카오 관리 API(kapi) 실시간 위임
+    |----------------------------------------------------------------------
+    |
+    | 조회(list/detail/categories/profiles) = messaging.view
+    | 변경(store/update/destroy/검수/상태변경) = messaging.manage
+    | 템플릿은 DB 저장 없이 매 요청 실시간 조회. 설정 페이지 알림톡 템플릿 탭이 소비.
+    */
+    Route::prefix('alimtalk-templates')->name('alimtalk-templates.')->group(function () {
+        // 조회 (view)
+        Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.view')->group(function () {
+            Route::get('/', [AlimtalkTemplateController::class, 'index'])->name('index');
+            Route::get('/categories', [AlimtalkTemplateController::class, 'categories'])->name('categories');
+            Route::get('/profiles', [AlimtalkTemplateController::class, 'profiles'])->name('profiles');
+            Route::get('/{templateCode}', [AlimtalkTemplateController::class, 'show'])->name('show');
+        });
+
+        // 변경 (manage)
+        Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.manage')->group(function () {
+            Route::post('/', [AlimtalkTemplateController::class, 'store'])->name('store');
+            // 이미지형 템플릿 이미지 업로드 (정적 경로 — {templateCode} 보다 먼저 선언)
+            Route::post('/image', [AlimtalkTemplateController::class, 'uploadImage'])->name('image');
+            Route::put('/{templateCode}', [AlimtalkTemplateController::class, 'update'])->name('update');
+            Route::delete('/{templateCode}', [AlimtalkTemplateController::class, 'destroy'])->name('destroy');
+
+            // 검수·상태 변경
+            Route::post('/{templateCode}/request', [AlimtalkTemplateController::class, 'requestInspection'])->name('request');
+            Route::post('/{templateCode}/cancel-request', [AlimtalkTemplateController::class, 'cancelRequest'])->name('cancel-request');
+            Route::post('/{templateCode}/stop', [AlimtalkTemplateController::class, 'stop'])->name('stop');
+            Route::post('/{templateCode}/reuse', [AlimtalkTemplateController::class, 'reuse'])->name('reuse');
+            Route::post('/{templateCode}/cancel-approval', [AlimtalkTemplateController::class, 'cancelApproval'])->name('cancel-approval');
+            Route::post('/{templateCode}/release', [AlimtalkTemplateController::class, 'release'])->name('release');
+        });
+    });
 });

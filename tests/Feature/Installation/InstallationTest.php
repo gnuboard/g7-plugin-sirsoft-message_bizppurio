@@ -12,8 +12,8 @@ use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 /**
  * 비즈뿌리오 메시징 플러그인 설치 스모크 테스트.
  *
- * plugin.php 가 선언하는 권한/메뉴/알림 정의/설정 스키마 구조와
- * activate/deactivate 의 메뉴 동기화·정리 동작을 검증한다.
+ * plugin.php 가 선언하는 권한/알림 정의/설정 스키마 구조와
+ * 관리자 메뉴 미생성(⚑ 결정 3) 을 검증한다.
  */
 class InstallationTest extends PluginTestCase
 {
@@ -109,35 +109,28 @@ class InstallationTest extends PluginTestCase
         }
     }
 
-    public function test_activate_시_관리자_메뉴가_계층으로_생성된다(): void
+    /**
+     * 관리자 메뉴를 추가하지 않는다 (화면 배치 결정 2026-07-14, ⚑ 결정 3).
+     *
+     * 플러그인 메뉴 추가는 정식 기능이 아니므로 getAdminMenus()·메뉴 sync 를
+     * 폐기했다. 진입은 코어 소유 설정 페이지(/admin/plugins/{id}/settings) 하나로
+     * 통일한다. 활성화해도 플러그인 소속 메뉴 row 가 생성되지 않아야 한다.
+     */
+    public function test_activate_시_관리자_메뉴를_생성하지_않는다(): void
     {
         $this->plugin->activate();
-
-        $parent = Menu::where('slug', 'sirsoft-message_bizppurio')
-            ->where('extension_type', ExtensionOwnerType::Plugin->value)
-            ->first();
-
-        $this->assertNotNull($parent, '최상위 메뉴가 생성되어야 한다.');
-
-        $children = Menu::where('parent_id', $parent->id)->get();
-        $this->assertCount(2, $children, '알림톡 템플릿 관리·발송 이력 2개 하위 메뉴가 생성되어야 한다.');
-
-        $childSlugs = $children->pluck('slug')->all();
-        $this->assertContains('sirsoft-message_bizppurio-alimtalk-templates', $childSlugs);
-        $this->assertContains('sirsoft-message_bizppurio-dispatches', $childSlugs);
-    }
-
-    public function test_deactivate_시_메뉴가_제거된다(): void
-    {
-        $this->plugin->activate();
-        $this->assertGreaterThan(0, Menu::where('extension_identifier', 'sirsoft-message_bizppurio')->count());
-
-        $this->plugin->deactivate();
 
         $this->assertSame(
             0,
             Menu::where('extension_identifier', 'sirsoft-message_bizppurio')->count(),
-            '비활성화 시 플러그인 소속 메뉴가 전부 제거되어야 한다.'
+            '메뉴 폐기 결정에 따라 플러그인 소속 메뉴가 생성되면 안 된다.'
+        );
+
+        $this->assertNull(
+            Menu::where('slug', 'sirsoft-message_bizppurio')
+                ->where('extension_type', ExtensionOwnerType::Plugin->value)
+                ->first(),
+            '최상위 메시지 발송 관리 메뉴가 남아 있으면 안 된다.'
         );
     }
 

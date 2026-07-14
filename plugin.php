@@ -34,77 +34,13 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 관리자 메뉴 정의
+     * 플러그인 비활성화 — 이 플러그인 소속 관리자 메뉴 잔재 정리.
      *
-     * 코어 PluginManager 는 모듈과 달리 plugin 의 getAdminMenus() 를 자동 호출하지 않으므로
-     * 본 클래스의 activate()/deactivate()/uninstall() lifecycle hook 에서 직접 sync 한다.
-     * 멱등성: helper.syncMenu 가 upsert 패턴이라 재활성화 시에도 row 중복 없이 그대로 복원.
-     *
-     * 최상위 「메시지 발송 관리」 아래에 알림톡 템플릿 관리·발송 이력 하위 메뉴를 둔다.
-     * (하위 페이지는 Phase 4·5 에서 라우트/레이아웃과 함께 실물화)
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAdminMenus(): array
-    {
-        return [
-            [
-                'name' => ['ko' => '메시지 발송 관리', 'en' => 'Messaging'],
-                'slug' => 'sirsoft-message_bizppurio',
-                'url' => null,
-                'icon' => 'fas fa-paper-plane',
-                'order' => 55,
-                'children' => [
-                    [
-                        'name' => ['ko' => '알림톡 템플릿 관리', 'en' => 'Alimtalk Templates'],
-                        'slug' => 'sirsoft-message_bizppurio-alimtalk-templates',
-                        'url' => '/admin/plugins/sirsoft-message_bizppurio/alimtalk-templates',
-                        'icon' => 'fas fa-comment-dots',
-                        'order' => 1,
-                        'permission' => 'sirsoft-message_bizppurio.messaging.view',
-                    ],
-                    [
-                        'name' => ['ko' => '발송 이력', 'en' => 'Dispatch History'],
-                        'slug' => 'sirsoft-message_bizppurio-dispatches',
-                        'url' => '/admin/plugins/sirsoft-message_bizppurio/dispatches',
-                        'icon' => 'fas fa-clock-rotate-left',
-                        'order' => 2,
-                        'permission' => 'sirsoft-message_bizppurio.messaging.view',
-                    ],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * 플러그인 활성화 — 관리자 메뉴 자동 등록.
-     *
-     * 모듈은 ModuleManager 가 getAdminMenus() 를 자동 처리하지만 플러그인은
-     * PluginManager 가 그 책임을 위임하므로 본 메서드에서 helper 를 직접 호출한다.
-     * syncMenu 가 신규 메뉴 생성 시 admin 역할을 자동 부여하므로 별도 역할 처리는 불필요.
-     *
-     * @return bool 활성화 성공 여부
-     */
-    public function activate(): bool
-    {
-        $helper = app(ExtensionMenuSyncHelper::class);
-
-        foreach ($this->getAdminMenus() as $menuData) {
-            $helper->syncMenuRecursive(
-                $menuData,
-                ExtensionOwnerType::Plugin,
-                $this->getIdentifier(),
-            );
-        }
-
-        return true;
-    }
-
-    /**
-     * 플러그인 비활성화 — 관리자 메뉴 일괄 제거.
-     *
-     * cleanupStaleMenus 에 currentSlugs=[] 를 넘겨 본 플러그인 소속 메뉴 전체를 삭제한다.
-     * 자식 메뉴 + role_menus 피벗 정리는 helper 가 cascade 처리.
+     * 이 플러그인은 관리자 메뉴를 만들지 않는다(화면 배치 결정 2026-07-14 — 진입은 코어
+     * 소유 설정 페이지 하나로 통일). 다만 이전 버전(getAdminMenus 사용 시기)에 생성된
+     * 메뉴 row 가 DB 에 남아 있을 수 있어, 비활성화 시 currentSlugs=[] 로 cleanupStaleMenus
+     * 를 호출해 잔재를 청소한다. 재활성화 시 아무 메뉴도 만들지 않으므로 정상 무메뉴 상태로
+     * 수렴한다(멱등). 자식 메뉴 + role_menus 피벗은 helper 가 cascade 처리.
      *
      * @return bool 비활성화 성공 여부
      */
@@ -120,7 +56,7 @@ class Plugin extends AbstractPlugin
     }
 
     /**
-     * 플러그인 제거 — 메뉴 잔존 안전망 (정상 흐름은 deactivate 가 먼저 처리).
+     * 플러그인 제거 — 메뉴 잔재 안전망 (정상 흐름은 deactivate 가 먼저 처리).
      *
      * @return bool 제거 성공 여부
      */

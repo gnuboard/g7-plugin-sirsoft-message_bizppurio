@@ -24,7 +24,8 @@ description: |
     - 리포트 수신 설정: 발송 결과 수신 주소를 사이트 도메인 기준 절대 URL 로 조회·복사
     - 크리덴셜(password/api_key/sender_key)은 type=password 마스킹 + frontend_schema expose:false
     - 저장은 hasChanges 없으면 비활성, 있으면 코어 설정 API 로 PUT
-    - 설치·활성화 시 권한 2개(view/manage)·메뉴 3개·잔액부족 알림 정의 생성 + 설정 초기값 로드
+    - 설치·활성화 시 권한 2개(view/manage)·잔액부족 알림 정의 생성 + 설정 초기값 로드
+      (관리자 메뉴는 추가하지 않음 — ⚑ 결정 3, 진입은 코어 소유 설정 페이지 하나)
 
   ※ 리포트 실제 수신 처리(POST /webhook)·알림톡 채널 기본 body 시드는 Phase 4~6 으로 이관.
 
@@ -65,8 +66,7 @@ effects:
   - all_referenced_i18n_keys_exist_in_ko_and_en
   # 설치·활성화 (백엔드)
   - install_creates_view_and_manage_permissions
-  - activate_creates_hierarchical_admin_menus
-  - deactivate_removes_plugin_menus
+  - activate_does_not_create_admin_menus  # ⚑ 결정 3: 플러그인 메뉴 폐기, 진입은 설정 페이지 하나로 통일
   - balance_low_notification_targets_admin
   - settings_defaults_load_with_test_mode_on
 

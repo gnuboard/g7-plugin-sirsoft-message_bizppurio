@@ -1,0 +1,301 @@
+<?php
+
+namespace Plugins\Sirsoft\MessageBizppurio\Tests\Feature\AlimtalkTemplate;
+
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Mockery;
+use Mockery\MockInterface;
+use Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException;
+use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkTemplateService;
+use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
+
+/**
+ * 알림톡 템플릿 관리 컨트롤러 Feature 테스트.
+ *
+ * 라우트 → 컨트롤러 → 서비스 경계를 검증한다. kapi 실제 호출 로직은
+ * AlimtalkTemplateServiceTest 가 검증하므로, 여기서는 AlimtalkTemplateService 를
+ * 컨테이너에 mock 으로 바인딩해 컨트롤러의 권한 경계(view/manage)·유형별 검증(FormRequest)·
+ * 응답 봉투·kapi 실패(예외)의 422 전파를 격리 검증한다.
+ *
+ * @since 1.0.0
+ */
+class AlimtalkTemplateControllerTest extends PluginTestCase
+{
+    private const BASE = '/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates';
+
+    /**
+     * AlimtalkTemplateService mock 을 컨테이너에 바인딩하고 반환한다.
+     */
+    private function mockService(): MockInterface
+    {
+        $mock = Mockery::mock(AlimtalkTemplateService::class);
+        $this->app->instance(AlimtalkTemplateService::class, $mock);
+
+        return $mock;
+    }
+
+    /**
+     * 지정 권한을 가진 admin 사용자를 생성한다.
+     *
+     * @param  array<int, string>  $permissionIdentifiers
+     */
+    private function adminWith(array $permissionIdentifiers): User
+    {
+        $user = User::factory()->create();
+
+        $adminRole = Role::firstOrCreate(
+            ['identifier' => 'admin'],
+            ['name' => json_encode(['ko' => '관리자', 'en' => 'Admin']), 'type' => 'admin']
+        );
+
+        $testRole = Role::create([
+            'identifier' => 'bizppurio_tpl_test_'.uniqid(),
+            'name' => json_encode(['ko' => '테스트', 'en' => 'Test']),
+            'type' => 'admin',
+        ]);
+
+        $permissionIds = [];
+        foreach ($permissionIdentifiers as $identifier) {
+            $permissionIds[] = Permission::firstOrCreate(
+                ['identifier' => $identifier],
+                ['name' => json_encode(['ko' => $identifier, 'en' => $identifier]), 'type' => 'admin']
+            )->id;
+        }
+        $testRole->permissions()->sync($permissionIds);
+
+        $user->roles()->attach($adminRole->id, ['assigned_at' => now(), 'assigned_by' => null]);
+        $user->roles()->attach($testRole->id, ['assigned_at' => now(), 'assigned_by' => null]);
+
+        return $user->fresh();
+    }
+
+    /**
+     * @param  array<int, string>  $permissions
+     * @return array<string, string>
+     */
+    private function authHeaders(array $permissions): array
+    {
+        $user = $this->adminWith($permissions);
+        $token = $user->createToken('test-token')->plainTextToken;
+
+        return [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ];
+    }
+
+    /**
+     * @scenario auth=view,service=ok
+     *
+     * @effects list_returns_templates_with_status_badge
+     */
+    public function test_view권한으로_목록을_조회한다(): void
+    {
+        $this->mockService()->shouldReceive('list')->once()->andReturn([
+            'templates' => [
+                ['templateCode' => 'TW_1', 'templateName' => '주문완료', 'status_badge' => ['variant' => 'green']],
+            ],
+            'pagination' => ['total' => 1, 'total_page' => 1, 'current_page' => 1, 'per_page' => 20],
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.view']))
+            ->getJson(self::BASE);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.templates.0.templateCode', 'TW_1');
+        $response->assertJsonPath('data.templates.0.status_badge.variant', 'green');
+    }
+
+    /**
+     * @scenario auth=guest
+     *
+     * @effects list_requires_authentication_returns_401
+     */
+    public function test_비인증은_401(): void
+    {
+        $this->getJson(self::BASE)->assertStatus(401);
+    }
+
+    /**
+     * @scenario auth=view_only,action=store
+     *
+     * @effects store_requires_manage_permission_returns_403
+     */
+    public function test_view권한만으로_등록시_403(): void
+    {
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.view']))
+            ->postJson(self::BASE, [
+                'templateName' => 'T',
+                'templateContent' => '본문',
+                'categoryCode' => '001',
+                'templateEmphasizeType' => 'NONE',
+            ]);
+
+        $response->assertStatus(403);
+    }
+
+    /**
+     * @scenario auth=manage,service=ok,type=NONE
+     *
+     * @effects store_creates_template_via_service
+     */
+    public function test_manage권한으로_기본형_등록에_성공한다(): void
+    {
+        $this->mockService()->shouldReceive('create')->once()->andReturn(['templateCode' => 'NEW']);
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->postJson(self::BASE, [
+                'templateName' => '가입환영',
+                'templateContent' => '#{name}님 환영합니다',
+                'categoryCode' => '001001',
+                'templateEmphasizeType' => 'NONE',
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.template.templateCode', 'NEW');
+    }
+
+    /**
+     * @scenario auth=manage,service=ok,requestInspection=true
+     *
+     * @effects store_with_request_inspection_flag_registers_then_requests_inspection
+     */
+    public function test_등록후검수요청_플래그로_등록과_검수요청을_이어서_수행한다(): void
+    {
+        $service = $this->mockService();
+        $service->shouldReceive('create')->once()->andReturn(['templateCode' => 'TW_NEW']);
+        $service->shouldReceive('requestInspection')->once()->with('TW_NEW');
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->postJson(self::BASE, [
+                'templateName' => '가입환영',
+                'templateContent' => '#{name}님 환영합니다',
+                'categoryCode' => '001001',
+                'templateEmphasizeType' => 'NONE',
+                'requestInspection' => true,
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.template.templateCode', 'TW_NEW');
+    }
+
+    /**
+     * @scenario auth=manage,type=TEXT,missing=title
+     *
+     * @effects store_validates_text_type_requires_title_returns_422
+     */
+    public function test_강조표기형에_강조문구_누락시_422(): void
+    {
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->postJson(self::BASE, [
+                'templateName' => 'T',
+                'templateContent' => '본문',
+                'categoryCode' => '001',
+                'templateEmphasizeType' => 'TEXT',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['templateTitle', 'templateSubtitle']);
+    }
+
+    /**
+     * @scenario auth=manage,type=IMAGE,missing=image
+     *
+     * @effects store_validates_image_type_requires_image_fields_returns_422
+     */
+    public function test_이미지형에_이미지필드_누락시_422(): void
+    {
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->postJson(self::BASE, [
+                'templateName' => 'T',
+                'templateContent' => '본문',
+                'categoryCode' => '001',
+                'templateEmphasizeType' => 'IMAGE',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['templateImageName', 'templateImageUrl']);
+    }
+
+    /**
+     * @scenario auth=manage,service=throws
+     *
+     * @effects kapi_failure_is_surfaced_as_422_with_result_code
+     */
+    public function test_kapi_실패는_422로_전파된다(): void
+    {
+        $this->mockService()->shouldReceive('create')->once()
+            ->andThrow(new BizppurioApiException('템플릿 불일치', resultCode: '7204'));
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->postJson(self::BASE, [
+                'templateName' => 'T',
+                'templateContent' => '본문',
+                'categoryCode' => '001',
+                'templateEmphasizeType' => 'NONE',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('errors.result_code', '7204');
+        $response->assertJsonPath('errors.kakao_message', '템플릿 불일치');
+    }
+
+    /**
+     * @scenario auth=manage,action=stop
+     *
+     * @effects stop_action_delegates_to_service_stop
+     */
+    public function test_중지_상태변경에_성공한다(): void
+    {
+        $this->mockService()->shouldReceive('stop')->once()->with('TW_1');
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->postJson(self::BASE.'/TW_1/stop');
+
+        $response->assertStatus(200);
+    }
+
+    /**
+     * @scenario auth=manage,action=upload_image
+     *
+     * @effects image_upload_returns_kakao_url
+     */
+    public function test_이미지_업로드가_카카오_ur_l을_반환한다(): void
+    {
+        $this->mockService()->shouldReceive('uploadImage')->once()
+            ->andReturn('https://mud-kage.kakao.com/dn/abc/banner.jpg');
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->post(self::BASE.'/image', [
+                'image' => UploadedFile::fake()->image('banner.jpg', 600, 400),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.image_url', 'https://mud-kage.kakao.com/dn/abc/banner.jpg');
+    }
+
+    /**
+     * @scenario auth=manage,action=upload_image,invalid=type
+     *
+     * @effects image_upload_rejects_non_image_returns_422
+     */
+    public function test_이미지가_아닌_파일_업로드는_422다(): void
+    {
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->post(self::BASE.'/image', [
+                'image' => UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf'),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['image']);
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
+}

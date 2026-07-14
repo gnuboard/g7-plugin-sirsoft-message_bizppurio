@@ -88,6 +88,48 @@ class BizppurioKakaoApiClient
     }
 
     /**
+     * 알림톡 이미지형 템플릿용 이미지를 업로드합니다. (`/v3/kakao/image/alimtalk/template`)
+     *
+     * multipart/form-data 로 이미지 파일을 전송하고, 성공 시 카카오 서버에 등록된 이미지
+     * URL(`image`)을 반환받는다. 이미지 제한: jpg/png, 최대 500KB, 가로 500px 이상.
+     *
+     * @param  string  $filePath  업로드할 이미지 파일의 절대 경로
+     * @param  string  $fileName  원본 파일명
+     * @return array<string, mixed> 응답 배열 (code/message/image)
+     *
+     * @throws BizppurioApiException 자격증명 미설정·HTTP 실패·응답 파싱 실패 시
+     */
+    public function uploadTemplateImage(string $filePath, string $fileName): array
+    {
+        [$bizId, $apiKey] = $this->credentials();
+
+        $response = $this->http()
+            ->attach('image', file_get_contents($filePath), $fileName)
+            ->post(self::BASE_URL.'/v3/kakao/image/alimtalk/template', [
+                'bizId' => $bizId,
+                'apiKey' => $apiKey,
+            ]);
+
+        if ($response->failed()) {
+            throw new BizppurioApiException(
+                __('sirsoft-message_bizppurio::messages.error.kakao_request_failed'),
+                httpStatus: $response->status(),
+            );
+        }
+
+        $result = $response->json();
+
+        if (! is_array($result)) {
+            throw new BizppurioApiException(
+                __('sirsoft-message_bizppurio::messages.error.invalid_response'),
+                httpStatus: $response->status(),
+            );
+        }
+
+        return $result;
+    }
+
+    /**
      * 카카오 관리 API 의 임의 엔드포인트를 호출합니다.
      *
      * Phase 5·6 의 템플릿 CRUD·검수·카테고리 조회 등에서 재사용한다. bizId/apiKey 는

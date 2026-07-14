@@ -9,6 +9,13 @@
         "title": "$t:sirsoft-message_bizppurio.settings.title",
         "description": "$t:sirsoft-message_bizppurio.settings.description"
     },
+    "init_actions": [
+        {
+            "if": "{{(query.tab ?? 'connection') === 'templates'}}",
+            "handler": "refetchDataSource",
+            "params": { "dataSourceId": "alimtalk_templates" }
+        }
+    ],
     "data_sources": [
         {
             "id": "settings",
@@ -28,16 +35,34 @@
             "auto_fetch": true,
             "auth_required": true,
             "initLocal": "reportInfo"
+        },
+        {
+            "id": "alimtalk_templates",
+            "type": "api",
+            "endpoint": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates",
+            "method": "GET",
+            "auto_fetch": false,
+            "auth_required": true,
+            "params": {
+                "status": "{{_local.templateStatus ?? ''}}",
+                "keyword": "{{_local.templateKeyword ?? ''}}"
+            }
+        },
+        {
+            "id": "alimtalk_categories",
+            "type": "api",
+            "endpoint": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates/categories",
+            "method": "GET",
+            "auto_fetch": false,
+            "auth_required": true
         }
     ],
     "slots": {
         "content": [
             {
-                "id": "plugin_settings_content",
+                "id": "plugin_settings_page",
                 "type": "basic",
                 "name": "Div",
-                "dataKey": "form",
-                "trackChanges": true,
                 "props": {
                     "className": "admin-page-content-responsive"
                 },
@@ -54,7 +79,74 @@
                         }
                     },
                     {
-                        "id": "info_panel",
+                        "id": "settings_tabs",
+                        "type": "basic",
+                        "name": "Div",
+                        "props": { "className": "mt-6 border-b border-gray-200 dark:border-gray-700 flex gap-1" },
+                        "children": [
+                            {
+                                "id": "tab_connection",
+                                "type": "basic",
+                                "name": "Button",
+                                "props": {
+                                    "type": "button",
+                                    "className": "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors {{(query.tab ?? 'connection') === 'connection' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}}"
+                                },
+                                "actions": [
+                                    {
+                                        "type": "click",
+                                        "handler": "replaceUrl",
+                                        "params": { "query": { "tab": "connection" }, "mergeQuery": true }
+                                    }
+                                ],
+                                "children": [
+                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.tabs.connection" }
+                                ]
+                            },
+                            {
+                                "id": "tab_templates",
+                                "type": "basic",
+                                "name": "Button",
+                                "props": {
+                                    "type": "button",
+                                    "className": "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors {{(query.tab ?? 'connection') === 'templates' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}}"
+                                },
+                                "actions": [
+                                    {
+                                        "type": "click",
+                                        "handler": "sequence",
+                                        "actions": [
+                                            {
+                                                "handler": "replaceUrl",
+                                                "params": { "query": { "tab": "templates" }, "mergeQuery": true }
+                                            },
+                                            {
+                                                "handler": "setState",
+                                                "params": { "target": "local", "templateView": "list" }
+                                            },
+                                            {
+                                                "handler": "refetchDataSource",
+                                                "params": { "dataSourceId": "alimtalk_templates" }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "children": [
+                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.tabs.templates" }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "connection_tab_panel",
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{(query.tab ?? 'connection') === 'connection'}}",
+                        "dataKey": "form",
+                        "trackChanges": true,
+                        "children": [
+                            {
+                                "id": "info_panel",
                         "type": "basic",
                         "name": "Div",
                         "props": {
@@ -819,7 +911,1127 @@
                         ]
                     }
                 ]
+            },
+                    {
+                "id": "templates_tab_panel",
+                "type": "basic",
+                "name": "Div",
+                "if": "{{(query.tab ?? 'connection') === 'templates'}}",
+                "props": { "className": "mt-6" },
+                "children": [
+                    {
+                        "id": "templates_readiness",
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{!(settings?.data?.settings?.api_key) || !(settings?.data?.settings?.sender_key)}}",
+                        "props": { "className": "mb-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4" },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "flex-between gap-3" },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "flex gap-2 items-start" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Icon",
+                                                "props": { "name": "triangle-exclamation", "size": "md", "className": "text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" }
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": { "className": "text-sm font-medium text-amber-800 dark:text-amber-200" },
+                                                        "text": "$t:sirsoft-message_bizppurio.templates.readiness.title"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "flex gap-1.5 flex-wrap mt-1.5" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "if": "{{!(settings?.data?.settings?.api_key)}}",
+                                                                "props": { "className": "inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100" },
+                                                                "text": "$t:sirsoft-message_bizppurio.templates.readiness.api_key_missing"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "if": "{{!(settings?.data?.settings?.sender_key)}}",
+                                                                "props": { "className": "inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100" },
+                                                                "text": "$t:sirsoft-message_bizppurio.templates.readiness.sender_key_missing"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Button",
+                                        "props": { "type": "button", "className": "btn btn-secondary btn-sm whitespace-nowrap" },
+                                        "actions": [
+                                            { "type": "click", "handler": "replaceUrl", "params": { "query": { "tab": "connection" }, "mergeQuery": true } }
+                                        ],
+                                        "children": [
+                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.readiness.go_settings" }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "P",
+                                "props": { "className": "text-xs text-amber-700 dark:text-amber-300 mt-2 leading-relaxed" },
+                                "text": "$t:sirsoft-message_bizppurio.templates.readiness.note"
+                            }
+                        ]
+                    },
+                    {
+                        "id": "templates_list_view",
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{(_local.templateView ?? 'list') === 'list'}}",
+                        "children": [
+                            {
+                                "id": "templates_toolbar",
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "flex-between gap-3 mb-4 flex-wrap" },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "flex gap-2 items-center flex-wrap" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Select",
+                                                "props": {
+                                                    "name": "templateStatus",
+                                                    "value": "{{_local.templateStatus ?? ''}}",
+                                                    "className": "input w-auto"
+                                                },
+                                                "actions": [
+                                                    {
+                                                        "type": "change",
+                                                        "handler": "sequence",
+                                                        "actions": [
+                                                            { "handler": "setState", "params": { "target": "local", "templateStatus": "{{$event.target.value}}" } },
+                                                            { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
+                                                        ]
+                                                    }
+                                                ],
+                                                "children": [
+                                                    { "type": "basic", "name": "Option", "props": { "value": "" }, "text": "$t:sirsoft-message_bizppurio.templates.list.filter_all" },
+                                                    { "type": "basic", "name": "Option", "props": { "value": "ACT" }, "text": "$t:sirsoft-message_bizppurio.templates.status.sendable" },
+                                                    { "type": "basic", "name": "Option", "props": { "value": "REQ" }, "text": "$t:sirsoft-message_bizppurio.templates.status.inspecting" },
+                                                    { "type": "basic", "name": "Option", "props": { "value": "REJ" }, "text": "$t:sirsoft-message_bizppurio.templates.status.rejected" },
+                                                    { "type": "basic", "name": "Option", "props": { "value": "REG" }, "text": "$t:sirsoft-message_bizppurio.templates.status.uninspected" },
+                                                    { "type": "basic", "name": "Option", "props": { "value": "STP" }, "text": "$t:sirsoft-message_bizppurio.templates.status.stopped" }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Input",
+                                                "props": {
+                                                    "type": "text",
+                                                    "value": "{{_local.templateKeyword ?? ''}}",
+                                                    "placeholder": "$t:sirsoft-message_bizppurio.templates.list.search_placeholder",
+                                                    "className": "input w-64"
+                                                },
+                                                "actions": [
+                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateKeyword": "{{$event.target.value}}" } }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Button",
+                                                "props": { "type": "button", "className": "btn btn-secondary btn-sm" },
+                                                "actions": [
+                                                    { "type": "click", "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
+                                                ],
+                                                "children": [
+                                                    { "type": "basic", "name": "Icon", "props": { "name": "rotate", "size": "sm" } },
+                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.list.refresh" }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Button",
+                                        "props": { "type": "button", "className": "btn btn-primary btn-sm flex-center gap-1.5" },
+                                        "actions": [
+                                            {
+                                                "type": "click",
+                                                "handler": "sequence",
+                                                "actions": [
+                                                    { "handler": "setState", "params": { "target": "local", "templateView": "form", "templateForm": { "templateEmphasizeType": "NONE", "templateName": "", "templateContent": "", "categoryCode": "" }, "editingCode": null, "templateErrors": null, "templateSaving": false, "templateCodeMode": "auto", "categoryGroup": "", "showVarRef": false, "showOptional": false } },
+                                                    { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_categories" } }
+                                                ]
+                                            }
+                                        ],
+                                        "children": [
+                                            { "type": "basic", "name": "Icon", "props": { "name": "plus", "size": "sm" } },
+                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.list.new" }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "templates_table_card",
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Table",
+                                        "props": { "className": "w-full text-sm" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Thead",
+                                                "props": { "className": "bg-gray-50 dark:bg-gray-700/50" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Tr",
+                                                        "children": [
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.name" },
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.code" },
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.status" },
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.actions" }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Tbody",
+                                                "if": "{{(alimtalk_templates?.data?.templates ?? []).length > 0}}",
+                                                "iteration": {
+                                                    "source": "alimtalk_templates?.data?.templates ?? []",
+                                                    "item_var": "tpl"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Tr",
+                                                        "props": { "className": "border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40" },
+                                                        "children": [
+                                                            { "type": "basic", "name": "Td", "props": { "className": "px-4 py-3 font-medium text-gray-900 dark:text-gray-100" }, "text": "{{tpl.templateName ?? ''}}" },
+                                                            { "type": "basic", "name": "Td", "props": { "className": "px-4 py-3 font-mono text-xs text-gray-500 dark:text-gray-400" }, "text": "{{tpl.templateCode ?? ''}}" },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Td",
+                                                                "props": { "className": "px-4 py-3" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Span",
+                                                                        "props": {
+                                                                            "className": "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{tpl.status_badge?.variant === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200' : tpl.status_badge?.variant === 'yellow' ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200' : tpl.status_badge?.variant === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200' : tpl.status_badge?.variant === 'purple' ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}}"
+                                                                        },
+                                                                        "text": "{{$t(tpl.status_badge?.label_key ?? 'sirsoft-message_bizppurio.templates.status.unknown')}}"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Td",
+                                                                "props": { "className": "px-4 py-3 text-right" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Button",
+                                                                        "props": { "type": "button", "className": "btn btn-ghost btn-xs" },
+                                                                        "actions": [
+                                                                            { "type": "click", "handler": "apiCall", "auth_required": true, "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates/{{tpl.templateCode}}", "params": { "method": "GET" }, "onSuccess": [ { "handler": "setState", "params": { "target": "local", "templateDetail": "{{response.data.template}}" } }, { "handler": "openModal", "target": "alimtalk_template_detail_modal" } ] }
+                                                                        ],
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.actions.detail" }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Tbody",
+                                                "if": "{{(alimtalk_templates?.data?.templates ?? []).length === 0}}",
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Tr",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Td",
+                                                                "props": { "className": "px-4 py-12 text-center text-gray-400 dark:text-gray-500", "colSpan": 4 },
+                                                                "children": [
+                                                                    { "type": "basic", "name": "P", "props": { "className": "font-medium" }, "text": "$t:sirsoft-message_bizppurio.templates.list.empty" },
+                                                                    { "type": "basic", "name": "P", "props": { "className": "text-xs mt-1" }, "text": "$t:sirsoft-message_bizppurio.templates.list.empty_hint" }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "templates_form_view",
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{_local.templateView === 'form'}}",
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "flex-between mb-4" },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "H3",
+                                        "props": { "className": "section-heading-md text-gray-900 dark:text-gray-100" },
+                                        "text": "{{_local.editingCode ? $t('sirsoft-message_bizppurio.templates.form.title_edit') : $t('sirsoft-message_bizppurio.templates.form.title_new')}}"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Button",
+                                        "props": { "type": "button", "className": "btn btn-ghost btn-sm" },
+                                        "actions": [
+                                            { "type": "click", "handler": "setState", "params": { "target": "local", "templateView": "list" } }
+                                        ],
+                                        "children": [
+                                            { "type": "basic", "name": "Icon", "props": { "name": "arrow-left", "size": "sm" } },
+                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.back_to_list" }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "grid grid-cols-1 lg:grid-cols-2 gap-6" },
+                                "children": [
+                                    {
+                                        "id": "template_form_fields",
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "space-y-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "children": [
+                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.name" },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Input",
+                                                        "props": { "type": "text", "maxLength": 200, "className": "input", "value": "{{_local.templateForm?.templateName ?? ''}}" },
+                                                        "actions": [
+                                                            { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateName": "{{$event.target.value}}" } }
+                                                        ]
+                                                    },
+                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.name_hint" }
+                                                ]
+                                            },
+                                            {
+                                                "id": "template_code_field",
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "children": [
+                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.code" },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "inline-flex gap-2 mt-1 mb-2" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": { "type": "button", "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateCodeMode ?? 'auto') === 'auto' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}" },
+                                                                "actions": [
+                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateCodeMode": "auto", "templateForm.templateCode": "" } }
+                                                                ],
+                                                                "children": [ { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.code_auto" } ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": { "type": "button", "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateCodeMode ?? 'auto') === 'manual' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}" },
+                                                                "actions": [
+                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateCodeMode": "manual" } }
+                                                                ],
+                                                                "children": [ { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.code_manual" } ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Input",
+                                                        "if": "{{_local.templateCodeMode === 'manual'}}",
+                                                        "props": { "type": "text", "maxLength": 30, "className": "input font-mono", "placeholder": "TW_1234", "value": "{{_local.templateForm?.templateCode ?? ''}}" },
+                                                        "actions": [
+                                                            { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateCode": "{{$event.target.value}}" } }
+                                                        ]
+                                                    },
+                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.code_hint" }
+                                                ]
+                                            },
+                                            {
+                                                "id": "template_category_field",
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "children": [
+                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.category" },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "grid grid-cols-2 gap-2" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Select",
+                                                                "props": { "className": "input", "value": "{{_local.categoryGroup ?? ''}}" },
+                                                                "actions": [
+                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "categoryGroup": "{{$event.target.value}}", "templateForm.categoryCode": "" } }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Option", "props": { "value": "" }, "text": "$t:sirsoft-message_bizppurio.templates.form.category_group" },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Option",
+                                                                        "iteration": {
+                                                                            "source": "[...new Set((alimtalk_categories?.data?.categories ?? []).map(c => c.groupName))]",
+                                                                            "item_var": "grp"
+                                                                        },
+                                                                        "props": { "value": "{{grp}}" },
+                                                                        "text": "{{grp}}"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Select",
+                                                                "props": { "className": "input", "disabled": "{{!_local.categoryGroup}}", "value": "{{_local.templateForm?.categoryCode ?? ''}}" },
+                                                                "actions": [
+                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.categoryCode": "{{$event.target.value}}" } }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Option", "props": { "value": "" }, "text": "$t:sirsoft-message_bizppurio.templates.form.category_item" },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Option",
+                                                                        "iteration": {
+                                                                            "source": "(alimtalk_categories?.data?.categories ?? []).filter(c => c.groupName === _local.categoryGroup)",
+                                                                            "item_var": "cat"
+                                                                        },
+                                                                        "props": { "value": "{{cat.code}}" },
+                                                                        "text": "{{cat.name}}"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "children": [
+                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.emphasize_type" },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "inline-flex gap-2 mt-1" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": {
+                                                                    "type": "button",
+                                                                    "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateForm?.templateEmphasizeType ?? 'NONE') === 'NONE' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}"
+                                                                },
+                                                                "actions": [
+                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateEmphasizeType": "NONE" } }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.type_none" }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": {
+                                                                    "type": "button",
+                                                                    "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateForm?.templateEmphasizeType ?? 'NONE') === 'IMAGE' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}"
+                                                                },
+                                                                "actions": [
+                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateEmphasizeType": "IMAGE" } }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.type_image" }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": {
+                                                                    "type": "button",
+                                                                    "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateForm?.templateEmphasizeType ?? 'NONE') === 'TEXT' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}"
+                                                                },
+                                                                "actions": [
+                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateEmphasizeType": "TEXT" } }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.type_text" }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "id": "template_text_fields",
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "if": "{{_local.templateForm?.templateEmphasizeType === 'TEXT'}}",
+                                                "props": { "className": "space-y-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.title_field" },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Input",
+                                                                "props": { "type": "text", "maxLength": 23, "className": "input", "value": "{{_local.templateForm?.templateTitle ?? ''}}" },
+                                                                "actions": [
+                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateTitle": "{{$event.target.value}}" } }
+                                                                ]
+                                                            },
+                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.title_hint" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.subtitle_field" },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Input",
+                                                                "props": { "type": "text", "maxLength": 18, "className": "input", "value": "{{_local.templateForm?.templateSubtitle ?? ''}}" },
+                                                                "actions": [
+                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateSubtitle": "{{$event.target.value}}" } }
+                                                                ]
+                                                            },
+                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.subtitle_hint" }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "id": "template_image_fields",
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "if": "{{_local.templateForm?.templateEmphasizeType === 'IMAGE'}}",
+                                                "props": { "className": "space-y-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "children": [
+                                                            { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.image_upload" },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Input",
+                                                                "props": { "type": "file", "accept": ".jpg,.jpeg,.png", "className": "block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 dark:file:bg-blue-900/40 file:text-blue-700 dark:file:text-blue-300 file:cursor-pointer" },
+                                                                "actions": [
+                                                                    { "type": "change", "handler": "sirsoft-message_bizppurio.uploadTemplateImage" }
+                                                                ]
+                                                            },
+                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.image_upload_hint" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "if": "{{_local.imageUploading}}",
+                                                        "props": { "className": "text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5" },
+                                                        "children": [
+                                                            { "type": "basic", "name": "Icon", "props": { "name": "spinner", "className": "spinner-sm" } },
+                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.image_uploading" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "if": "{{_local.imageUploadError}}",
+                                                        "props": { "className": "text-sm text-red-600 dark:text-red-400" },
+                                                        "text": "{{_local.imageUploadError}}"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "if": "{{_local.templateForm?.templateImageUrl}}",
+                                                        "props": { "className": "flex items-center gap-3 p-2 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600" },
+                                                        "children": [
+                                                            { "type": "basic", "name": "Img", "props": { "src": "{{_local.templateForm?.templateImageUrl}}", "className": "w-16 h-16 object-cover rounded" } },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "min-w-0 flex-1" },
+                                                                "children": [
+                                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-700 dark:text-gray-200 truncate" }, "text": "{{_local.templateForm?.templateImageName ?? ''}}" },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Button",
+                                                                        "props": { "type": "button", "className": "text-xs text-red-600 dark:text-red-400 underline mt-0.5" },
+                                                                        "actions": [
+                                                                            { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateImageUrl": "", "templateForm.templateImageName": "" } }
+                                                                        ],
+                                                                        "children": [ { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.image_remove" } ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.image_maker_notice" }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "children": [
+                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.content" },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Textarea",
+                                                        "props": {
+                                                            "rows": 14,
+                                                            "maxLength": 1300,
+                                                            "placeholder": "$t:sirsoft-message_bizppurio.templates.form.content_placeholder",
+                                                            "className": "textarea font-mono resize-y leading-relaxed",
+                                                            "value": "{{_local.templateForm?.templateContent ?? ''}}"
+                                                        },
+                                                        "actions": [
+                                                            { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateContent": "{{$event.target.value}}" } }
+                                                        ]
+                                                    },
+                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.content_hint" }
+                                                ]
+                                            },
+                                            {
+                                                "id": "template_variables",
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 space-y-2" },
+                                                "children": [
+                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm font-medium text-blue-900 dark:text-blue-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_title" },
+                                                    { "type": "basic", "name": "P", "props": { "className": "text-xs text-blue-800 dark:text-blue-300 leading-relaxed" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_help" },
+                                                    { "type": "basic", "name": "P", "props": { "className": "text-xs text-blue-700 dark:text-blue-300 mt-1" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_quick" },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "flex gap-1.5 flex-wrap" },
+                                                        "iteration": {
+                                                            "source": "['name', 'app_name', 'order_number', 'site_url']",
+                                                            "item_var": "varName"
+                                                        },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": { "type": "button", "className": "px-2 py-1 rounded bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs font-mono hover:bg-blue-100 dark:hover:bg-blue-900/50" },
+                                                                "actions": [
+                                                                    { "type": "click", "handler": "sirsoft-message_bizppurio.insertVariable", "params": { "variable": "{{varName}}", "target": "templateContent", "statePath": "templateForm.templateContent" } }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "text": "{{'#{' + varName + '}'}}" }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": { "className": "text-xs font-medium text-blue-800 dark:text-blue-300 mt-2" },
+                                                        "text": "$t:sirsoft-message_bizppurio.templates.form.variables_ref_toggle"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "overflow-x-auto mt-1 rounded border border-blue-100 dark:border-blue-800 bg-white/60 dark:bg-gray-900/40" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Table",
+                                                                "props": { "className": "w-full text-xs" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Thead",
+                                                                        "children": [
+                                                                            {
+                                                                                "type": "basic",
+                                                                                "name": "Tr",
+                                                                                "children": [
+                                                                                    { "type": "basic", "name": "Th", "props": { "className": "text-left px-2 py-1 text-blue-900 dark:text-blue-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_ref_event" },
+                                                                                    { "type": "basic", "name": "Th", "props": { "className": "text-left px-2 py-1 text-blue-900 dark:text-blue-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_ref_vars" }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Tbody",
+                                                                        "iteration": {
+                                                                            "source": "[{event: $t('sirsoft-message_bizppurio.templates.varref.welcome'), vars: '#{name} #{app_name} #{action_url} #{site_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.reset_password'), vars: '#{name} #{app_name} #{action_url} #{expire_minutes} #{site_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.order_confirmed'), vars: '#{name} #{app_name} #{order_number} #{total_amount} #{order_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.order_shipped'), vars: '#{name} #{app_name} #{order_number} #{carrier_name} #{tracking_number} #{order_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.new_comment'), vars: '#{name} #{app_name} #{board_name} #{post_title} #{comment_author} #{post_url}'}]",
+                                                                            "item_var": "vref"
+                                                                        },
+                                                                        "children": [
+                                                                            {
+                                                                                "type": "basic",
+                                                                                "name": "Tr",
+                                                                                "props": { "className": "border-t border-blue-100 dark:border-blue-800" },
+                                                                                "children": [
+                                                                                    { "type": "basic", "name": "Td", "props": { "className": "px-2 py-1 text-blue-800 dark:text-blue-300 whitespace-nowrap" }, "text": "{{vref.event}}" },
+                                                                                    { "type": "basic", "name": "Td", "props": { "className": "px-2 py-1 text-blue-700 dark:text-blue-300 font-mono" }, "text": "{{vref.vars}}" }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "id": "template_optional",
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Button",
+                                                        "props": { "type": "button", "className": "text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1" },
+                                                        "actions": [
+                                                            { "type": "click", "handler": "setState", "params": { "target": "local", "showOptional": "{{!_local.showOptional}}" } }
+                                                        ],
+                                                        "children": [
+                                                            { "type": "basic", "name": "Icon", "props": { "name": "{{_local.showOptional ? 'chevron-down' : 'chevron-right'}}", "size": "sm" } },
+                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.optional_toggle" }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "if": "{{_local.showOptional}}",
+                                                        "props": { "className": "mt-2 space-y-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600" },
+                                                        "children": [
+                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint mb-1" }, "text": "$t:sirsoft-message_bizppurio.templates.form.optional_help" },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Label",
+                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optExtra}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optExtra": "{{$event.target.checked}}", "templateForm.templateExtra": "" } } ] },
+                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.extra" }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Div",
+                                                                        "if": "{{_local.optExtra}}",
+                                                                        "props": { "className": "mt-1.5 pl-6" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Textarea", "props": { "rows": 2, "maxLength": 500, "className": "textarea resize-y", "value": "{{_local.templateForm?.templateExtra ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateExtra": "{{$event.target.value}}" } } ] },
+                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.extra_hint" }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Label",
+                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optPreview}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optPreview": "{{$event.target.checked}}", "templateForm.templatePreviewMessage": "" } } ] },
+                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.preview_message" }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Div",
+                                                                        "if": "{{_local.optPreview}}",
+                                                                        "props": { "className": "mt-1.5 pl-6" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "maxLength": 40, "className": "input", "value": "{{_local.templateForm?.templatePreviewMessage ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templatePreviewMessage": "{{$event.target.value}}" } } ] },
+                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.preview_message_hint" }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Label",
+                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optButton}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optButton": "{{$event.target.checked}}", "templateForm.buttons": [] } } ] },
+                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.button" }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Div",
+                                                                        "if": "{{_local.optButton}}",
+                                                                        "props": { "className": "mt-1.5 pl-6 grid grid-cols-1 sm:grid-cols-3 gap-2" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "maxLength": 20, "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_name", "value": "{{_local.templateForm?.buttons?.[0]?.name ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.buttons.0.name": "{{$event.target.value}}", "templateForm.buttons.0.linkType": "WL" } } ] },
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input sm:col-span-2", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_url", "value": "{{_local.templateForm?.buttons?.[0]?.linkMo ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.buttons.0.linkMo": "{{$event.target.value}}", "templateForm.buttons.0.linkType": "WL" } } ] },
+                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint sm:col-span-3" }, "text": "$t:sirsoft-message_bizppurio.templates.form.button_hint" }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Label",
+                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optQuick}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optQuick": "{{$event.target.checked}}", "templateForm.quickReplies": [] } } ] },
+                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.quick_reply" }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Div",
+                                                                        "if": "{{_local.optQuick}}",
+                                                                        "props": { "className": "mt-1.5 pl-6 grid grid-cols-1 sm:grid-cols-3 gap-2" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "maxLength": 20, "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_name", "value": "{{_local.templateForm?.quickReplies?.[0]?.name ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.quickReplies.0.name": "{{$event.target.value}}", "templateForm.quickReplies.0.linkType": "WL" } } ] },
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input sm:col-span-2", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_url", "value": "{{_local.templateForm?.quickReplies?.[0]?.linkMo ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.quickReplies.0.linkMo": "{{$event.target.value}}", "templateForm.quickReplies.0.linkType": "WL" } } ] },
+                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint sm:col-span-3" }, "text": "$t:sirsoft-message_bizppurio.templates.form.quick_reply_hint" }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Label",
+                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optLink}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optLink": "{{$event.target.checked}}", "templateForm.templateRepresentLink": {} } } ] },
+                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.represent_link" }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Div",
+                                                                        "if": "{{_local.optLink}}",
+                                                                        "props": { "className": "mt-1.5 pl-6 space-y-2" },
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.link_pc", "value": "{{_local.templateForm?.templateRepresentLink?.linkPc ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateRepresentLink.linkPc": "{{$event.target.value}}" } } ] },
+                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.link_mo", "value": "{{_local.templateForm?.templateRepresentLink?.linkMo ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateRepresentLink.linkMo": "{{$event.target.value}}" } } ] }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Label",
+                                                                "props": { "className": "flex items-start gap-2 cursor-pointer pt-1" },
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Input", "props": { "type": "checkbox", "className": "mt-0.5", "checked": "{{!!_local.templateForm?.securityFlag}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.securityFlag": "{{$event.target.checked}}" } } ] },
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Div",
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Span", "props": { "className": "text-sm text-gray-700 dark:text-gray-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.security_flag" },
+                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.security_flag_hint" }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "if": "{{_local.templateErrors}}",
+                                                "props": { "className": "alert-danger" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Ul",
+                                                        "props": { "className": "list-disc list-inside space-y-1" },
+                                                        "iteration": {
+                                                            "source": "Object.values(_local.templateErrors ?? {}).flatMap(m => Array.isArray(m) ? m : [m])",
+                                                            "item_var": "msg"
+                                                        },
+                                                        "children": [
+                                                            { "type": "basic", "name": "Li", "props": { "className": "text-error-soft text-sm" }, "text": "{{msg}}" }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "flex flex-col gap-2 pt-2 border-t border-gray-100 dark:border-gray-700" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "flex gap-2" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": { "type": "button", "disabled": "{{_local.templateSaving}}", "className": "btn btn-secondary flex-1" },
+                                                                "actions": [
+                                                                    {
+                                                                        "type": "click",
+                                                                        "handler": "sequence",
+                                                                        "actions": [
+                                                                            { "handler": "setState", "params": { "target": "local", "templateErrors": null, "templateSaving": true } },
+                                                                            {
+                                                                                "handler": "apiCall",
+                                                                                "auth_required": true,
+                                                                                "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates",
+                                                                                "params": { "method": "POST", "body": "{{_local.templateForm}}" },
+                                                                                "onSuccess": [
+                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false } },
+                                                                                    { "handler": "toast", "params": { "type": "success", "message": "$t:sirsoft-message_bizppurio.templates.toast.created" } },
+                                                                                    { "handler": "setState", "params": { "target": "local", "templateView": "list" } },
+                                                                                    { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
+                                                                                ],
+                                                                                "onError": [
+                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false, "templateErrors": "{{error.errors ?? { _general: error.message }}}" } },
+                                                                                    { "handler": "toast", "params": { "type": "error", "message": "$t:sirsoft-message_bizppurio.templates.toast.action_failed" } }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.save_register" }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": { "type": "button", "disabled": "{{_local.templateSaving}}", "className": "btn btn-primary flex-1" },
+                                                                "actions": [
+                                                                    {
+                                                                        "type": "click",
+                                                                        "handler": "sequence",
+                                                                        "actions": [
+                                                                            { "handler": "setState", "params": { "target": "local", "templateErrors": null, "templateSaving": true } },
+                                                                            {
+                                                                                "handler": "apiCall",
+                                                                                "auth_required": true,
+                                                                                "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates",
+                                                                                "params": { "method": "POST", "body": "{{Object.assign({}, _local.templateForm, { requestInspection: true })}}" },
+                                                                                "onSuccess": [
+                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false } },
+                                                                                    { "handler": "toast", "params": { "type": "success", "message": "$t:sirsoft-message_bizppurio.templates.toast.created_requested" } },
+                                                                                    { "handler": "setState", "params": { "target": "local", "templateView": "list" } },
+                                                                                    { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
+                                                                                ],
+                                                                                "onError": [
+                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false, "templateErrors": "{{error.errors ?? { _general: error.message }}}" } },
+                                                                                    { "handler": "toast", "params": { "type": "error", "message": "$t:sirsoft-message_bizppurio.templates.toast.action_failed" } }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ],
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.save_and_request" }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Div",
+                                                        "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 p-3 space-y-2 text-xs" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "flex gap-2" },
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "props": { "className": "font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_register" },
+                                                                    { "type": "basic", "name": "Span", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_register_hint" }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Div",
+                                                                "props": { "className": "flex gap-2" },
+                                                                "children": [
+                                                                    { "type": "basic", "name": "Span", "props": { "className": "font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_and_request" },
+                                                                    { "type": "basic", "name": "Span", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_and_request_hint" }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "template_form_preview",
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6" },
+                                        "children": [
+                                            { "type": "basic", "name": "P", "props": { "className": "text-label mb-3 text-gray-700 dark:text-gray-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.preview_title" },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "if": "{{(_local.templateForm?.templateContent ?? '') !== ''}}",
+                                                "props": { "className": "bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600 p-4 whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100 leading-relaxed min-h-40" },
+                                                "text": "{{_local.templateForm?.templateContent ?? ''}}"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "if": "{{(_local.templateForm?.templateContent ?? '') === ''}}",
+                                                "props": { "className": "bg-white dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-400 dark:text-gray-500 min-h-40 flex items-center justify-center text-center" },
+                                                "text": "$t:sirsoft-message_bizppurio.templates.form.preview_empty"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": { "className": "form-hint mt-3" },
+                                                "text": "$t:sirsoft-message_bizppurio.templates.form.type_item_list_notice"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+                ]
             }
         ]
-    }
+    },
+    "modals": [
+        {
+            "id": "alimtalk_template_detail_modal",
+            "type": "composite",
+            "name": "Modal",
+            "props": {
+                "title": "$t:sirsoft-message_bizppurio.templates.detail.title",
+                "size": "lg"
+            },
+            "children": [
+                {
+                    "type": "basic",
+                    "name": "Div",
+                    "props": { "className": "space-y-3" },
+                    "children": [
+                        {
+                            "type": "basic",
+                            "name": "Div",
+                            "children": [
+                                { "type": "basic", "name": "P", "props": { "className": "text-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.name" },
+                                { "type": "basic", "name": "P", "props": { "className": "text-body" }, "text": "{{_local.templateDetail?.templateName ?? ''}}" }
+                            ]
+                        },
+                        {
+                            "type": "basic",
+                            "name": "Div",
+                            "children": [
+                                { "type": "basic", "name": "P", "props": { "className": "text-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.code" },
+                                { "type": "basic", "name": "P", "props": { "className": "font-mono text-sm text-body" }, "text": "{{_local.templateDetail?.templateCode ?? ''}}" }
+                            ]
+                        },
+                        {
+                            "type": "basic",
+                            "name": "Div",
+                            "children": [
+                                { "type": "basic", "name": "P", "props": { "className": "text-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.content" },
+                                { "type": "basic", "name": "Div", "props": { "className": "bg-gray-50 dark:bg-gray-900/40 rounded p-3 whitespace-pre-wrap text-sm text-body" }, "text": "{{_local.templateDetail?.templateContent ?? ''}}" }
+                            ]
+                        },
+                        {
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex justify-end pt-2" },
+                            "children": [
+                                {
+                                    "type": "basic",
+                                    "name": "Button",
+                                    "props": { "type": "button", "className": "btn btn-secondary" },
+                                    "actions": [
+                                        { "type": "click", "handler": "closeModal", "target": "alimtalk_template_detail_modal" }
+                                    ],
+                                    "children": [
+                                        { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.detail.close" }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
 }
