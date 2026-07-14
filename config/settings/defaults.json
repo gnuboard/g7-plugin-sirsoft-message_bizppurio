@@ -9,7 +9,8 @@
         "password": "",
         "api_key": "",
         "sender_number": "",
-        "sender_key": ""
+        "sender_key": "",
+        "balance_low_notify_cooldown": 3600
     },
     "frontend_schema": {
         "is_test_mode": { "expose": false },

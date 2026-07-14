@@ -1,0 +1,90 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Plugins\Sirsoft\MessageBizppurio\Repositories;
+
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
+
+/**
+ * 비즈뿌리오 발송 이력 Repository 구현체.
+ */
+class BizppurioDispatchRepository implements BizppurioDispatchRepositoryInterface
+{
+    /**
+     * 발송 이력 1건을 생성합니다.
+     *
+     * @param  array<string, mixed>  $data  이력 데이터
+     * @return BizppurioDispatch 생성된 이력
+     */
+    public function create(array $data): BizppurioDispatch
+    {
+        return BizppurioDispatch::create($data);
+    }
+
+    /**
+     * refkey 로 발송 이력을 조회합니다.
+     *
+     * @param  string  $refkey  우리 부여 키
+     * @return BizppurioDispatch|null 매칭된 이력 또는 null
+     */
+    public function findByRefkey(string $refkey): ?BizppurioDispatch
+    {
+        return BizppurioDispatch::query()->byRefkey($refkey)->first();
+    }
+
+    /**
+     * 발송 이력의 속성을 갱신합니다.
+     *
+     * @param  BizppurioDispatch  $dispatch  대상 이력
+     * @param  array<string, mixed>  $data  갱신 데이터
+     * @return BizppurioDispatch 갱신된 이력
+     */
+    public function update(BizppurioDispatch $dispatch, array $data): BizppurioDispatch
+    {
+        $dispatch->fill($data)->save();
+
+        return $dispatch;
+    }
+
+    /**
+     * 필터·검색 조건으로 발송 이력을 페이지네이션 조회합니다.
+     *
+     * @param  array<string, mixed>  $filters  channel / status / date_from / date_to / keyword
+     * @param  int  $perPage  페이지당 건수
+     * @return LengthAwarePaginator<BizppurioDispatch>
+     */
+    public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
+    {
+        $query = BizppurioDispatch::query();
+
+        if (! empty($filters['channel'])) {
+            $query->where('channel', $filters['channel']);
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['date_from'])) {
+            $query->where('sent_at', '>=', $filters['date_from']);
+        }
+
+        if (! empty($filters['date_to'])) {
+            $query->where('sent_at', '<=', $filters['date_to']);
+        }
+
+        if (! empty($filters['keyword'])) {
+            $keyword = $filters['keyword'];
+            $query->where(function ($q) use ($keyword) {
+                $q->where('to_number', 'like', "%{$keyword}%")
+                    ->orWhere('to_name', 'like', "%{$keyword}%")
+                    ->orWhere('refkey', 'like', "%{$keyword}%");
+            });
+        }
+
+        return $query->orderByDesc('created_at')->paginate($perPage);
+    }
+}

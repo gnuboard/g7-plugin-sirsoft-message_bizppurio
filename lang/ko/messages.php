@@ -59,6 +59,11 @@ return [
         'sender_number_attribute' => '발신번호',
     ],
 
+    // webhook(URL PUSH) 리포트 수신
+    'webhook' => [
+        'received' => '리포트를 수신했습니다.',
+    ],
+
     // 발송 엔진 오류 (API 클라이언트·토큰·발송 Job)
     'error' => [
         'credentials_missing' => '비즈뿌리오 아이디와 비밀번호를 먼저 설정하세요.',

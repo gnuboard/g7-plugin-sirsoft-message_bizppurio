@@ -59,6 +59,11 @@ return [
         'sender_number_attribute' => 'Sender Number',
     ],
 
+    // webhook(URL PUSH) 리포트 수신
+    'webhook' => [
+        'received' => 'Report received.',
+    ],
+
     // 발송 엔진 오류 (API 클라이언트·토큰·발송 Job)
     'error' => [
         'credentials_missing' => 'Please set the Bizppurio ID and password first.',

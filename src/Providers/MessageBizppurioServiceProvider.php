@@ -7,8 +7,13 @@ namespace Plugins\Sirsoft\MessageBizppurio\Providers;
 use App\Extension\BasePluginServiceProvider;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Notifications\Notification;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioDispatchRepository;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioNotificationBindingRepository;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificationBindingRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Services\BizppurioTokenService;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsChannelDriver;
+use Plugins\Sirsoft\MessageBizppurio\Services\WebhookReportService;
 
 /**
  * 비즈뿌리오 메시징 플러그인 서비스 프로바이더.
@@ -29,18 +34,21 @@ class MessageBizppurioServiceProvider extends BasePluginServiceProvider
      * @var array<class-string, class-string>
      */
     protected array $repositories = [
-        // Phase 4: BizppurioDispatchRepositoryInterface / BizppurioNotificationBindingRepositoryInterface
+        BizppurioDispatchRepositoryInterface::class => BizppurioDispatchRepository::class,
+        BizppurioNotificationBindingRepositoryInterface::class => BizppurioNotificationBindingRepository::class,
     ];
 
     /**
      * CacheInterface 가 필요한 서비스 (contextual binding).
      *
-     * Phase 2 에서 발송 토큰 캐시 서비스(BizppurioTokenService)를 등록한다.
+     * - BizppurioTokenService(Phase 2): 발송 토큰 캐시
+     * - WebhookReportService(Phase 4): 잔액부족 알림 쿨다운(D3 중복 방지)
      *
      * @var array<int, class-string>
      */
     protected array $cacheServices = [
         BizppurioTokenService::class,
+        WebhookReportService::class,
     ];
 
     /**

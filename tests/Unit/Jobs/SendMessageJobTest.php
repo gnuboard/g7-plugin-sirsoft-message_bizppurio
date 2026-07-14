@@ -3,13 +3,16 @@
 namespace Plugins\Sirsoft\MessageBizppurio\Tests\Unit\Jobs;
 
 use Mockery;
+use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
 use Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException;
 use Plugins\Sirsoft\MessageBizppurio\Jobs\SendMessageJob;
+use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Services\BizppurioApiClient;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
 /**
- * SendMessageJob — 성공/일시오류 재시도/영구실패 즉시 판정 검증.
+ * SendMessageJob — 성공/일시오류 재시도/영구실패 판정 + 이력 갱신 검증(Phase 4).
  */
 class SendMessageJobTest extends PluginTestCase
 {
@@ -33,13 +36,39 @@ class SendMessageJobTest extends PluginTestCase
         return $mock;
     }
 
-    public function test_성공시_예외없이_종료(): void
+    /**
+     * 컨테이너에서 실제 리포지토리(Provider 바인딩)를 해석해 반환.
+     */
+    private function dispatches(): BizppurioDispatchRepositoryInterface
     {
-        $job = new SendMessageJob($this->payload, 'ref1');
-        $job->handle($this->makeClient(['code' => 1000, 'messagekey' => 'mk']));
+        return app(BizppurioDispatchRepositoryInterface::class);
+    }
 
-        // 예외 미발생 = 정상 완료
-        $this->assertTrue(true);
+    /**
+     * refkey 로 pending 이력을 1건 seed.
+     */
+    private function seedPending(string $refkey): BizppurioDispatch
+    {
+        return BizppurioDispatch::create([
+            'refkey' => $refkey,
+            'channel' => 'sms',
+            'to_number' => '01011112222',
+            'content' => 'hi',
+            'status' => DispatchStatus::Pending->value,
+            'source' => 'auto',
+        ]);
+    }
+
+    public function test_성공시_예외없이_종료하고_이력을_sent로_갱신한다(): void
+    {
+        $dispatch = $this->seedPending('ref1');
+
+        $job = new SendMessageJob($this->payload, 'ref1');
+        $job->handle($this->makeClient(['code' => 1000, 'messagekey' => 'mk']), $this->dispatches());
+
+        $dispatch->refresh();
+        $this->assertSame(DispatchStatus::Sent, $dispatch->status);
+        $this->assertSame('mk', $dispatch->messagekey);
     }
 
     public function test_일시오류_결과코드는_예외를_던져_재시도한다(): void
@@ -49,20 +78,24 @@ class SendMessageJobTest extends PluginTestCase
         $this->expectException(BizppurioApiException::class);
 
         try {
-            $job->handle($this->makeClient(['code' => 5003, 'description' => 'temp']));
+            $job->handle($this->makeClient(['code' => 5003, 'description' => 'temp']), $this->dispatches());
         } catch (BizppurioApiException $e) {
             $this->assertSame('5003', $e->getResultCode());
             throw $e;
         }
     }
 
-    public function test_영구실패_결과코드는_예외없이_종료된다(): void
+    public function test_영구실패_결과코드는_예외없이_종료하고_이력을_failed로_갱신한다(): void
     {
+        $dispatch = $this->seedPending('ref1');
+
         // 3006(계정오류) = 영구실패 → 재시도 안 함(예외 없음)
         $job = new SendMessageJob($this->payload, 'ref1');
-        $job->handle($this->makeClient(['code' => 3006, 'description' => 'account error']));
+        $job->handle($this->makeClient(['code' => 3006, 'description' => 'account error']), $this->dispatches());
 
-        $this->assertTrue(true);
+        $dispatch->refresh();
+        $this->assertSame(DispatchStatus::Failed, $dispatch->status);
+        $this->assertSame('3006', $dispatch->result_code);
     }
 
     public function test_tries와_backoff_기본값(): void

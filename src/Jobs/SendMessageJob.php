@@ -9,7 +9,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
+use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
 use Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Services\BizppurioApiClient;
 use Throwable;
 
@@ -55,17 +57,28 @@ class SendMessageJob implements ShouldQueue
     /**
      * 발송을 수행하고 결과코드에 따라 재시도/실패를 판정합니다.
      *
+     * 발송 응답으로 이력(bizppurio_dispatches)을 갱신한다(Phase 4):
+     *  - 성공: status=sent(발송 접수 완료, 최종 성공은 webhook 리포트가 확정) + messagekey 저장.
+     *  - 재시도: 예외를 던져 큐 재시도(이력은 pending 유지).
+     *  - 영구 실패: status=failed + result_code 기록.
+     *
      * @param  BizppurioApiClient  $client  발송 API 클라이언트
+     * @param  BizppurioDispatchRepositoryInterface  $dispatches  발송 이력 리포지토리
      *
      * @throws BizppurioApiException 일시 오류·429 시(큐 재시도 트리거)
      */
-    public function handle(BizppurioApiClient $client): void
+    public function handle(BizppurioApiClient $client, BizppurioDispatchRepositoryInterface $dispatches): void
     {
         $result = $client->sendMessage($this->payload);
         $code = (string) ($result['code'] ?? '');
 
         if ($client->isSuccess($result)) {
-            // 발송 접수 성공. 이력 갱신(messagekey 저장)은 Phase 4 훅이 담당.
+            // 발송 접수 성공 → sent(최종 성공/실패는 webhook 리포트가 확정) + messagekey 저장.
+            $this->updateDispatch($dispatches, [
+                'status' => DispatchStatus::Sent->value,
+                'messagekey' => $result['messagekey'] ?? null,
+            ]);
+
             return;
         }
 
@@ -76,12 +89,32 @@ class SendMessageJob implements ShouldQueue
             );
         }
 
-        // 영구 실패: 재시도하지 않고 종료. 실패 이력 기록은 Phase 4 가 담당.
+        // 영구 실패: 재시도하지 않고 종료 + 실패 이력 기록.
+        $this->updateDispatch($dispatches, [
+            'status' => DispatchStatus::Failed->value,
+            'result_code' => $code,
+            'result_message' => $result['description'] ?? null,
+        ]);
+
         Log::warning('비즈뿌리오 발송 영구 실패', [
             'refkey' => $this->refkey,
             'code' => $code,
             'description' => $result['description'] ?? null,
         ]);
+    }
+
+    /**
+     * refkey 로 발송 이력을 조회해 갱신합니다 (이력이 없으면 무시).
+     *
+     * @param  BizppurioDispatchRepositoryInterface  $dispatches  발송 이력 리포지토리
+     * @param  array<string, mixed>  $data  갱신 데이터
+     */
+    private function updateDispatch(BizppurioDispatchRepositoryInterface $dispatches, array $data): void
+    {
+        $dispatch = $dispatches->findByRefkey($this->refkey);
+        if ($dispatch !== null) {
+            $dispatches->update($dispatch, $data);
+        }
     }
 
     /**

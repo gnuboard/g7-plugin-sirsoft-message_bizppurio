@@ -1,6 +1,10 @@
 <?php
 
+use App\Http\Middleware\EnforceIdentityPolicy;
+use App\Http\Middleware\RefreshTokenExpiration;
 use Illuminate\Support\Facades\Route;
+use Plugins\Sirsoft\MessageBizppurio\Controllers\BizppurioWebhookController;
+use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
 
 /*
 |--------------------------------------------------------------------------
@@ -11,6 +15,15 @@ use Illuminate\Support\Facades\Route;
 |  - URL prefix: /api/plugins/sirsoft-message_bizppurio
 |  - middleware: api
 */
+
+// 비즈뿌리오 webhook(URL PUSH) 리포트 수신 — 외부 시스템이 호출한다.
+//
+// api 그룹에 appendToGroup 된 토큰/IDV 미들웨어를 라우트 레벨에서 제외(코어 무수정)하고,
+// 인증은 IP 화이트리스트로 대체한다(계획서 D13). 항상 200 응답(멱등).
+Route::post('/webhook', [BizppurioWebhookController::class, 'handle'])
+    ->withoutMiddleware([EnforceIdentityPolicy::class, RefreshTokenExpiration::class])
+    ->middleware(BizppurioWebhookIpWhitelist::class)
+    ->name('webhook');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->group(function () {
     // 리포트 수신 주소 조회 (관리자 설정 페이지 표시용)

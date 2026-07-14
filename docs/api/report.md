@@ -41,7 +41,7 @@ _단건 응답: `data` 객체의 필드._
 
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
 | --- | --- | --- | --- |
-| url | string | `http://g7-issue.eh.test/api/plugins/s…` | 비즈뿌리오가 발송 결과(리포트)를 URL PUSH 로 전송할 수신 콜백 URL(`/api/plugins/sirsoft-message_bizppurio/webhook`)의 사이트 도메인 기준 절대 주소. `config('app.url')` 을 신뢰 소스로 조합하므로 운영자가 접속한 주소와 무관하게 항상 정식 도메인이 반환된다. |
+| url | string | `http://g7-issue.eh.test/api/plugins/s…` | <!-- TODO: 설명 --> |
 
 **응답 예시**
 
@@ -76,4 +76,5 @@ URL 은 `url()` 헬퍼가 아니라 `config('app.url')` 을 기준으로 조합�
 관리자 인증(`auth:sanctum`)과 `core.plugins.read` 권한이 필요하며, 토큰 누락·만료는 401, 권한 부족은 403 으로 응답합니다.
 
 ※ 실제 리포트 수신 처리(`POST /webhook`)는 후속 단계에서 제공됩니다. 본 엔드포인트는 표시용 주소 조회만 담당합니다.
+
 

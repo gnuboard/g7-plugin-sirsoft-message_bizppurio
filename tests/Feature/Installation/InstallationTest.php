@@ -4,6 +4,8 @@ namespace Plugins\Sirsoft\MessageBizppurio\Tests\Feature\Installation;
 
 use App\Enums\ExtensionOwnerType;
 use App\Models\Menu;
+use Illuminate\Support\Facades\Schema;
+use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Plugin;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
@@ -137,5 +139,47 @@ class InstallationTest extends PluginTestCase
             Menu::where('extension_identifier', 'sirsoft-message_bizppurio')->count(),
             '비활성화 시 플러그인 소속 메뉴가 전부 제거되어야 한다.'
         );
+    }
+
+    /**
+     * Phase 4 발송 이력·연동 테이블이 마이그레이션으로 생성된다.
+     */
+    public function test_phase4_테이블이_생성된다(): void
+    {
+        $this->assertTrue(Schema::hasTable('bizppurio_dispatches'));
+        $this->assertTrue(Schema::hasTable('bizppurio_notification_bindings'));
+
+        $this->assertTrue(Schema::hasColumns('bizppurio_dispatches', [
+            'refkey', 'messagekey', 'channel', 'to_number', 'to_user_id',
+            'status', 'result_code', 'reported_at', 'raw_payload',
+        ]));
+    }
+
+    /**
+     * 마이그레이션 up→down→up 왕복 후에도 리포지토리 호출 1회전이 동작한다.
+     */
+    public function test_마이그레이션_왕복_후_리포지토리가_동작한다(): void
+    {
+        $migrations = base_path('plugins/_bundled/sirsoft-message_bizppurio/database/migrations');
+
+        // down
+        $this->artisan('migrate:rollback', ['--path' => $migrations, '--realpath' => true])->run();
+        $this->assertFalse(Schema::hasTable('bizppurio_dispatches'));
+
+        // up
+        $this->artisan('migrate', ['--path' => $migrations, '--realpath' => true])->run();
+        $this->assertTrue(Schema::hasTable('bizppurio_dispatches'));
+
+        // 왕복 후 Repository 호출 1회전 (create → 조회)
+        $dispatch = BizppurioDispatch::create([
+            'refkey' => 'roundtrip',
+            'channel' => 'sms',
+            'to_number' => '01011112222',
+            'content' => 'x',
+            'status' => 'sent',
+            'source' => 'auto',
+        ]);
+        $this->assertNotNull(BizppurioDispatch::query()->byRefkey('roundtrip')->first());
+        $this->assertSame('roundtrip', $dispatch->refkey);
     }
 }

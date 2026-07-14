@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Plugins\Sirsoft\MessageBizppurio\Services;
 
+use App\Models\User;
 use App\Notifications\BaseNotification;
 use App\Notifications\GenericNotification;
 use App\Services\NotificationTemplateService;
@@ -11,7 +12,10 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchChannel;
+use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchSource;
+use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
 use Plugins\Sirsoft\MessageBizppurio\Jobs\SendMessageJob;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
 
 /**
  * 코어 알림 시스템의 sms 채널 드라이버.
@@ -40,11 +44,13 @@ class SmsChannelDriver
      * @param  NotificationTemplateService  $templateService  sms 채널 본문 템플릿 resolve
      * @param  SmsTypeResolver  $typeResolver  SMS/LMS byte 판별
      * @param  MessagePayloadBuilder  $payloadBuilder  발송 payload 조립
+     * @param  BizppurioDispatchRepositoryInterface  $dispatches  발송 이력 영속화(Phase 4)
      */
     public function __construct(
         private readonly NotificationTemplateService $templateService,
         private readonly SmsTypeResolver $typeResolver,
         private readonly MessagePayloadBuilder $payloadBuilder,
+        private readonly BizppurioDispatchRepositoryInterface $dispatches,
     ) {}
 
     /**
@@ -90,7 +96,7 @@ class SmsChannelDriver
             return;
         }
 
-        // 4. refkey 생성 → SMS/LMS 판별 → payload 조립 → Job 위임
+        // 4. refkey 생성 → SMS/LMS 판별 → payload 조립
         $refkey = $this->generateRefkey();
         $channel = $this->typeResolver->resolve($message);
 
@@ -98,7 +104,37 @@ class SmsChannelDriver
             ? $this->payloadBuilder->buildLms($to, $message, $refkey, (string) ($rendered['subject'] ?? ''))
             : $this->payloadBuilder->buildSms($to, $message, $refkey);
 
+        // 5. 발송 이력 pending 생성(Phase 4) → Job 위임. Job 이 refkey 로 조회해 sent/failed 갱신.
+        $this->dispatches->create([
+            'refkey' => $refkey,
+            'channel' => $channel->value,
+            'to_number' => $to,
+            'to_name' => $notifiable->name ?? null,
+            'to_user_id' => $this->resolveUserId($notifiable),
+            'content' => $message,
+            'notification_type' => $type,
+            'status' => DispatchStatus::Pending->value,
+            'source' => DispatchSource::Auto->value,
+            'sent_at' => now(),
+        ]);
+
         SendMessageJob::dispatch($payload, $refkey);
+    }
+
+    /**
+     * 수신자가 회원이면 user id 를, 비회원(GuestNotifiable)이면 null 을 반환합니다.
+     *
+     * @param  object  $notifiable  수신자
+     * @return int|null 회원 ID 또는 null
+     */
+    private function resolveUserId(object $notifiable): ?int
+    {
+        // User 모델만 회원 PK 로 취급. GuestNotifiable 은 DB 회원이 아니므로 null.
+        if ($notifiable instanceof User) {
+            return (int) $notifiable->getKey();
+        }
+
+        return null;
     }
 
     /**

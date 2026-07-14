@@ -10,7 +10,9 @@ use App\Services\NotificationTemplateService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
+use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Jobs\SendMessageJob;
+use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioDispatchRepository;
 use Plugins\Sirsoft\MessageBizppurio\Services\MessagePayloadBuilder;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsTypeResolver;
@@ -56,6 +58,7 @@ class SmsChannelDriverTest extends PluginTestCase
             $templateService,
             new SmsTypeResolver,
             $builder ?? $this->spyBuilder(),
+            new BizppurioDispatchRepository,
         );
     }
 
@@ -125,6 +128,45 @@ class SmsChannelDriverTest extends PluginTestCase
 
         Bus::assertDispatched(SendMessageJob::class);
         $this->assertSame('01099990000', $builder->calls[0]['to']);
+    }
+
+    public function test_회원_발송_시_pending_이력을_생성하고_회원id를_기록한다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678', 'name' => '김철수']);
+
+        $this->makeDriver($this->fakeTemplate())->send($member, $this->notification());
+
+        $this->assertDatabaseCount('bizppurio_dispatches', 1);
+        $dispatch = BizppurioDispatch::first();
+        $this->assertSame('pending', $dispatch->status->value);
+        $this->assertSame('01012345678', $dispatch->to_number);
+        $this->assertSame($member->id, $dispatch->to_user_id, '회원 발송은 to_user_id 를 채워야 한다.');
+        $this->assertSame('order_confirmed', $dispatch->notification_type);
+    }
+
+    public function test_비회원_발송_이력은_회원id가_null이다(): void
+    {
+        Bus::fake();
+        $guest = new GuestNotifiable('guest@example.com', '홍길동', 'ko');
+        $data = [SmsChannelDriver::RECIPIENT_PHONE_KEY => '010-9999-0000'];
+
+        $this->makeDriver($this->fakeTemplate())->send($guest, $this->notification($data));
+
+        $dispatch = BizppurioDispatch::first();
+        $this->assertNotNull($dispatch);
+        $this->assertNull($dispatch->to_user_id, '비회원 발송은 to_user_id 가 null 이어야 한다.');
+    }
+
+    public function test_발송하지_않으면_이력도_생성하지_않는다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        // 템플릿 없음 → skip → 이력도 없어야 함
+        $this->makeDriver(null)->send($member, $this->notification());
+
+        $this->assertDatabaseCount('bizppurio_dispatches', 0);
     }
 
     public function test_전화번호가_없으면_발송하지_않는다(): void
