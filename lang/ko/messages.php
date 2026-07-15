@@ -124,4 +124,10 @@ return [
             'image_url' => '이미지 링크',
         ],
     ],
+
+    // 알림↔알림톡 템플릿 연동 (NotificationBindingController 응답)
+    'binding' => [
+        'saved' => '알림톡 연동을 저장했습니다.',
+        'removed' => '알림톡 연동을 해제했습니다.',
+    ],
 ];

@@ -124,4 +124,10 @@ return [
             'image_url' => 'Image URL',
         ],
     ],
+
+    // Notification-to-alimtalk template binding (NotificationBindingController responses)
+    'binding' => [
+        'saved' => 'Alimtalk binding saved.',
+        'removed' => 'Alimtalk binding removed.',
+    ],
 ];

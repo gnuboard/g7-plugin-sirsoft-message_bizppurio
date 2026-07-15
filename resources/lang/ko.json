@@ -62,6 +62,22 @@
             "templates": "알림톡 템플릿"
         }
     },
+    "binding": {
+        "section_title": "카카오 알림톡 연동",
+        "section_hint": "선택하면 즉시 저장됩니다. 본문 저장과 별개로 동작합니다.",
+        "connected_template": "연결 템플릿",
+        "none": "연결 안 함",
+        "no_approved_templates": "발송 가능한(승인된) 알림톡 템플릿이 없습니다. 먼저 템플릿을 등록·검수하세요.",
+        "fallback_sms": "실패 시 SMS로 대체발송",
+        "variables_hint": "제공 변수는 발송 시 자동 치환됩니다.",
+        "saved": "알림톡 연동을 저장했습니다.",
+        "save_error": "알림톡 연동 저장에 실패했습니다."
+    },
+    "banner": {
+        "not_ready": "발송에 필요한 설정이 완료되지 않았습니다.",
+        "setup_action": "설정하기",
+        "test_mode": "테스트 모드입니다 — 실제 발송은 이뤄지지 않습니다."
+    },
     "templates": {
         "title": "알림톡 템플릿",
         "description": "카카오 알림톡 템플릿을 등록·검수·관리합니다. 승인된 템플릿만 알림 연동에 사용할 수 있습니다.",

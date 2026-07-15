@@ -6,11 +6,11 @@ namespace Plugins\Sirsoft\MessageBizppurio\Providers;
 
 use App\Extension\BasePluginServiceProvider;
 use Illuminate\Notifications\ChannelManager;
-use Illuminate\Notifications\Notification;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioDispatchRepository;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioNotificationBindingRepository;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificationBindingRepositoryInterface;
+use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\BizppurioTokenService;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\WebhookReportService;
@@ -75,9 +75,9 @@ class MessageBizppurioServiceProvider extends BasePluginServiceProvider
      * SmsChannelDriver::send() 로 위임되게 한다. 플러그인 비활성/삭제 시 이 등록도
      * 사라져 코어가 안전하게 원복된다.
      *
-     * 알림톡('alimtalk')은 채널 등록(RegisterNotificationChannelsListener)만 이번 Phase 에
-     * 하고 실제 발송 드라이버는 Phase 6 이다. 그 사이 alimtalk 채널로 발송이 트리거될 경우의
-     * 크래시를 막기 위해, 아직은 no-op 스텁 드라이버로 등록해 둔다(Phase 6 에서 실드라이버로 교체).
+     * 알림톡('alimtalk')도 동일하게 AlimtalkChannelDriver 로 위임한다(Phase 6). 관리자가
+     * 알림톡 탭에서 연결한 승인 템플릿(binding)이 있을 때만 실제 발송되고, 미연결 알림은
+     * 드라이버가 조용히 skip 한다.
      */
     public function boot(): void
     {
@@ -100,22 +100,14 @@ class MessageBizppurioServiceProvider extends BasePluginServiceProvider
      * 코어 알림 ChannelManager 에 이 플러그인의 채널 드라이버를 등록합니다.
      *
      * - sms: SmsChannelDriver 로 실제 발송 위임(Phase 3).
-     * - alimtalk: 채널 등록만 이번 Phase(§6-2·Phase 6). 실발송 전까지 no-op 스텁으로
-     *   등록해 alimtalk 발송 트리거 시 "Driver not supported" 크래시를 막는다.
+     * - alimtalk: AlimtalkChannelDriver 로 실제 발송 위임(Phase 6). 연결된 승인 템플릿
+     *   (binding)이 있을 때만 발송하고 미연결 알림은 드라이버가 skip 한다.
      *
      * @param  ChannelManager  $manager  코어 알림 채널 매니저
      */
     private function registerChannelDrivers(ChannelManager $manager): void
     {
         $manager->extend('sms', fn ($app) => $app->make(SmsChannelDriver::class));
-
-        $manager->extend('alimtalk', fn () => new class
-        {
-            /**
-             * @param  object  $notifiable
-             * @param  Notification  $notification
-             */
-            public function send($notifiable, $notification): void {}
-        });
+        $manager->extend('alimtalk', fn ($app) => $app->make(AlimtalkChannelDriver::class));
     }
 }

@@ -5,8 +5,12 @@ namespace Plugins\Sirsoft\MessageBizppurio;
 use App\Enums\ExtensionOwnerType;
 use App\Extension\AbstractPlugin;
 use App\Extension\Helpers\ExtensionMenuSyncHelper;
+use App\Extension\ModuleManager;
+use Database\Seeders\NotificationDefinitionSeeder;
+use Illuminate\Support\Facades\Log;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
+use Plugins\Sirsoft\MessageBizppurio\Listeners\SeedChannelTemplatesListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\ValidateBizppurioSettingsListener;
 
 /**
@@ -31,6 +35,34 @@ class Plugin extends AbstractPlugin
             'homepage' => 'https://sir.kr',
             'keywords' => ['bizppurio', 'sms', 'lms', 'alimtalk', 'kakao', 'messaging', 'notification'],
         ];
+    }
+
+    /**
+     * 플러그인 활성화 — 기존 회원 알림에 sms·alimtalk template 을 즉시 증강.
+     *
+     * SeedChannelTemplatesListener 는 코어/모듈이 알림 정의를 *시딩할 때* 필터 훅으로 증강한다.
+     * 그러나 플러그인 활성화 시점에는 코어/모듈 정의가 이미 시딩돼 있어(우리 채널 없이) 다음
+     * 재시딩까지 alimtalk template 이 생기지 않는다. 따라서 활성화 시 코어·활성 모듈의 알림
+     * 정의를 재시드해, 이제 활성화된 우리 필터를 통과시켜 기존 정의에도 채널을 즉시 반영한다.
+     *
+     * 재시드는 모두 user_overrides 보존 upsert(멱등)이며 코어·모듈 파일을 수정하지 않는다.
+     * 실패는 로그만 남기고 활성화 자체는 막지 않는다(발송·연동은 채널 등록만으로도 동작하며,
+     * template 은 다음 정상 재시딩에도 수렴).
+     *
+     * @return bool 활성화 성공 여부
+     */
+    public function activate(): bool
+    {
+        try {
+            app(NotificationDefinitionSeeder::class)->run();
+            app(ModuleManager::class)->resyncAllActiveDeclarativeArtifacts();
+        } catch (\Throwable $e) {
+            Log::warning('[sirsoft-message_bizppurio] 알림 채널 template 증강 재시드 실패', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return true;
     }
 
     /**
@@ -294,9 +326,10 @@ class Plugin extends AbstractPlugin
     /**
      * 훅 리스너 목록 반환
      *
-     * Phase 3: 채널 등록/readiness/3영역 노출(RegisterNotificationChannelsListener) +
-     * 비회원 주문 전화번호 주입(GuestPhoneExtractListener).
-     * Phase 4~6 에서 webhook/알림톡 발송 리스너를 추가한다.
+     * - RegisterNotificationChannelsListener: 채널 등록/readiness/3영역 노출(Phase 3)
+     * - SeedChannelTemplatesListener: 회원 알림에 sms·alimtalk template 증강(Phase 6 결정 D — 시딩 필터 훅)
+     * - GuestPhoneExtractListener: 비회원 주문 전화번호 주입(Phase 3)
+     * - ValidateBizppurioSettingsListener: 환경설정 검증
      *
      * @return array<class-string>
      */
@@ -304,6 +337,7 @@ class Plugin extends AbstractPlugin
     {
         return [
             RegisterNotificationChannelsListener::class,
+            SeedChannelTemplatesListener::class,
             GuestPhoneExtractListener::class,
             ValidateBizppurioSettingsListener::class,
         ];

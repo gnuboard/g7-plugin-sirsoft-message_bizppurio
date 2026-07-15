@@ -1,0 +1,373 @@
+{
+  "target_layout": "admin_settings",
+  "comment": "알림 템플릿 편집 모달(alimtalk 채널)에 비즈뿌리오 전용 칸을 append 한다(계획서 §6-2, Phase 6). 코어 편집 모달·저장 버튼은 전혀 건드리지 않는다(코어 템플릿 무오염). channel==='alimtalk'일 때만 ①안내 카드 ②연결 템플릿 드롭다운 ③SMS 대체 토글을 노출하며, 값을 바꾸면 즉시 우리 API 로 저장하고 toast 로 피드백한다(별도 저장 버튼 없음 — PO 확정 UX). 코어 [저장] 버튼은 본문·수신자만 저장하고 연동과 무관하다. 초기값·저장 후 상태는 bizppurioBindings 데이터소스에서 편집 대상 알림 type 으로 읽는다.",
+  "data_sources": [
+    {
+      "id": "bizppurioBindings",
+      "type": "api",
+      "endpoint": "/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": true,
+      "fallback": {
+        "data": {
+          "bindings": {}
+        }
+      }
+    },
+    {
+      "id": "bizppurioApprovedTemplates",
+      "type": "api",
+      "endpoint": "/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings/approved-templates",
+      "method": "GET",
+      "auto_fetch": true,
+      "auth_required": true,
+      "fallback": {
+        "data": {
+          "templates": []
+        }
+      }
+    }
+  ],
+  "injections": [
+    {
+      "target_id": "notif_channel_content",
+      "position": "prepend_child",
+      "comment": "알림톡·SMS 탭 상단 상태 배너. 문제 있을 때만 노출(정상=배너 없음, PO Q1-A). readiness 미충족 🔴 설정하기 안내 / is_test_mode 🟡 테스트 모드 안내. 코어 목록·모달은 그대로.",
+      "components": [
+        {
+          "id": "bizppurio_status_banner",
+          "type": "basic",
+          "name": "Div",
+          "if": "{{['sms','alimtalk'].includes(_local.activeNotificationChannel ?? query.channel ?? '') && ((availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.readiness?.ready === false || (availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.is_test_mode === true)}}",
+          "props": {
+            "className": "mb-3"
+          },
+          "children": [
+            {
+              "id": "bizppurio_banner_not_ready",
+              "type": "basic",
+              "name": "Div",
+              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.readiness?.ready === false}}",
+              "props": {
+                "className": "flex-between gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "flex-center gap-2"
+                  },
+                  "children": [
+                    {
+                      "type": "basic",
+                      "name": "Icon",
+                      "props": {
+                        "name": "fas fa-circle-exclamation",
+                        "size": "sm",
+                        "className": "text-red-600 dark:text-red-400"
+                      }
+                    },
+                    {
+                      "type": "basic",
+                      "name": "Span",
+                      "props": {
+                        "className": "text-sm text-red-800 dark:text-red-200"
+                      },
+                      "text": "$t:sirsoft-message_bizppurio.banner.not_ready"
+                    }
+                  ]
+                },
+                {
+                  "type": "basic",
+                  "name": "Button",
+                  "props": {
+                    "type": "button",
+                    "className": "text-xs font-medium px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 whitespace-nowrap"
+                  },
+                  "text": "$t:sirsoft-message_bizppurio.banner.setup_action",
+                  "actions": [
+                    {
+                      "type": "click",
+                      "handler": "navigate",
+                      "params": {
+                        "path": "/admin/plugins/sirsoft-message_bizppurio/settings"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "bizppurio_banner_test_mode",
+              "type": "basic",
+              "name": "Div",
+              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.readiness?.ready !== false && (availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.is_test_mode === true}}",
+              "props": {
+                "className": "flex-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Icon",
+                  "props": {
+                    "name": "fas fa-flask",
+                    "size": "sm",
+                    "className": "text-amber-600 dark:text-amber-400"
+                  }
+                },
+                {
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-sm text-amber-800 dark:text-amber-200"
+                  },
+                  "text": "$t:sirsoft-message_bizppurio.banner.test_mode"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target_id": "template_variables_info",
+      "position": "append",
+      "components": [
+        {
+          "id": "bizppurio_alimtalk_section",
+          "comment": "알림톡 전용 칸 — channel==='alimtalk' 일 때만. 변경 즉시 우리 API 로 저장.",
+          "type": "basic",
+          "name": "Div",
+          "if": "{{_global.notification_template_form_modal?.template?.channel === 'alimtalk'}}",
+          "props": {
+            "className": "bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700 rounded-lg p-4 space-y-3"
+          },
+          "children": [
+            {
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "flex-start gap-2"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Icon",
+                  "props": {
+                    "name": "fas fa-circle-info",
+                    "size": "sm",
+                    "className": "text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5"
+                  }
+                },
+                {
+                  "type": "basic",
+                  "name": "Div",
+                  "children": [
+                    {
+                      "type": "basic",
+                      "name": "H4",
+                      "props": {
+                        "className": "text-sm font-medium text-teal-800 dark:text-teal-200"
+                      },
+                      "text": "$t:sirsoft-message_bizppurio.binding.section_title"
+                    },
+                    {
+                      "type": "basic",
+                      "name": "P",
+                      "props": {
+                        "className": "text-xs text-teal-700 dark:text-teal-300 mt-0.5"
+                      },
+                      "text": "$t:sirsoft-message_bizppurio.binding.section_hint"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "bizppurio_binding_template_select",
+              "type": "basic",
+              "name": "Div",
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Label",
+                  "props": {
+                    "className": "text-secondary block text-xs font-medium mb-1"
+                  },
+                  "text": "$t:sirsoft-message_bizppurio.binding.connected_template"
+                },
+                {
+                  "type": "composite",
+                  "name": "Select",
+                  "props": {
+                    "value": "{{_global.notification_template_form_modal?.bizppurio?.template_code ?? (bizppurioBindings?.data?.bindings?.[_global.notification_template_form_modal?.definition?.type]?.template_code ?? '')}}",
+                    "className": "w-full text-sm",
+                    "options": "{{[{ value: '', label: $t('sirsoft-message_bizppurio.binding.none') }, ...(bizppurioApprovedTemplates?.data?.templates ?? []).map(t => ({ value: t.template_code, label: t.template_name + ' (' + t.template_code + ')' }))]}}"
+                  },
+                  "actions": [
+                    {
+                      "type": "change",
+                      "handler": "sequence",
+                      "params": {
+                        "actions": [
+                          {
+                            "handler": "setState",
+                            "params": {
+                              "target": "global",
+                              "notification_template_form_modal.bizppurio.template_code": "{{$event.target.value}}",
+                              "notification_template_form_modal.bizppurio.template_name": "{{((bizppurioApprovedTemplates?.data?.templates ?? []).find(t => t.template_code === $event.target.value)?.template_name) ?? ''}}",
+                              "notification_template_form_modal.bizppurio.fallback_sms": "{{$event.target.value === '' ? false : (_global.notification_template_form_modal?.bizppurio?.fallback_sms ?? (bizppurioBindings?.data?.bindings?.[_global.notification_template_form_modal?.definition?.type]?.fallback_sms_enabled ?? false))}}"
+                            }
+                          },
+                          {
+                            "handler": "apiCall",
+                            "auth_required": true,
+                            "target": "/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings",
+                            "params": {
+                              "method": "POST",
+                              "body": {
+                                "notification_type": "{{_global.notification_template_form_modal?.definition?.type}}",
+                                "template_code": "{{$event.target.value}}",
+                                "template_name": "{{((bizppurioApprovedTemplates?.data?.templates ?? []).find(t => t.template_code === $event.target.value)?.template_name) ?? ''}}",
+                                "fallback_sms_enabled": "{{_global.notification_template_form_modal?.bizppurio?.fallback_sms ?? false}}"
+                              }
+                            },
+                            "onSuccess": [
+                              {
+                                "handler": "refetchDataSource",
+                                "params": {
+                                  "dataSourceId": "bizppurioBindings"
+                                }
+                              },
+                              {
+                                "handler": "toast",
+                                "params": {
+                                  "message": "$t:sirsoft-message_bizppurio.binding.saved",
+                                  "type": "success"
+                                }
+                              }
+                            ],
+                            "onError": [
+                              {
+                                "handler": "toast",
+                                "params": {
+                                  "message": "$t:sirsoft-message_bizppurio.binding.save_error",
+                                  "type": "error"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "basic",
+                  "name": "P",
+                  "if": "{{(bizppurioApprovedTemplates?.data?.templates ?? []).length === 0}}",
+                  "props": {
+                    "className": "text-xs text-amber-600 dark:text-amber-400 mt-1"
+                  },
+                  "text": "$t:sirsoft-message_bizppurio.binding.no_approved_templates"
+                }
+              ]
+            },
+            {
+              "id": "bizppurio_binding_fallback_toggle",
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "flex-center gap-2"
+              },
+              "children": [
+                {
+                  "type": "composite",
+                  "name": "Toggle",
+                  "props": {
+                    "checked": "{{_global.notification_template_form_modal?.bizppurio?.fallback_sms ?? (bizppurioBindings?.data?.bindings?.[_global.notification_template_form_modal?.definition?.type]?.fallback_sms_enabled ?? false)}}",
+                    "disabled": "{{(_global.notification_template_form_modal?.bizppurio?.template_code ?? (bizppurioBindings?.data?.bindings?.[_global.notification_template_form_modal?.definition?.type]?.template_code ?? '')) === ''}}"
+                  },
+                  "actions": [
+                    {
+                      "type": "change",
+                      "handler": "sequence",
+                      "params": {
+                        "actions": [
+                          {
+                            "handler": "setState",
+                            "params": {
+                              "target": "global",
+                              "notification_template_form_modal.bizppurio.fallback_sms": "{{!(_global.notification_template_form_modal?.bizppurio?.fallback_sms ?? (bizppurioBindings?.data?.bindings?.[_global.notification_template_form_modal?.definition?.type]?.fallback_sms_enabled ?? false))}}"
+                            }
+                          },
+                          {
+                            "handler": "apiCall",
+                            "auth_required": true,
+                            "target": "/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings",
+                            "params": {
+                              "method": "POST",
+                              "body": {
+                                "notification_type": "{{_global.notification_template_form_modal?.definition?.type}}",
+                                "template_code": "{{_global.notification_template_form_modal?.bizppurio?.template_code ?? (bizppurioBindings?.data?.bindings?.[_global.notification_template_form_modal?.definition?.type]?.template_code ?? '')}}",
+                                "template_name": "{{_global.notification_template_form_modal?.bizppurio?.template_name ?? (bizppurioBindings?.data?.bindings?.[_global.notification_template_form_modal?.definition?.type]?.template_name ?? '')}}",
+                                "fallback_sms_enabled": "{{_global.notification_template_form_modal?.bizppurio?.fallback_sms ?? false}}"
+                              }
+                            },
+                            "onSuccess": [
+                              {
+                                "handler": "refetchDataSource",
+                                "params": {
+                                  "dataSourceId": "bizppurioBindings"
+                                }
+                              },
+                              {
+                                "handler": "toast",
+                                "params": {
+                                  "message": "$t:sirsoft-message_bizppurio.binding.saved",
+                                  "type": "success"
+                                }
+                              }
+                            ],
+                            "onError": [
+                              {
+                                "handler": "toast",
+                                "params": {
+                                  "message": "$t:sirsoft-message_bizppurio.binding.save_error",
+                                  "type": "error"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "basic",
+                  "name": "Span",
+                  "props": {
+                    "className": "text-secondary text-xs"
+                  },
+                  "text": "$t:sirsoft-message_bizppurio.binding.fallback_sms"
+                }
+              ]
+            },
+            {
+              "type": "basic",
+              "name": "P",
+              "props": {
+                "className": "text-xs text-teal-700 dark:text-teal-300"
+              },
+              "text": "$t:sirsoft-message_bizppurio.binding.variables_hint"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "priority": 320
+}

@@ -72,13 +72,39 @@ class RegisterNotificationChannelsListenerTest extends PluginTestCase
         $this->assertTrue($alimtalk['allow_guest']);
     }
 
-    public function test_알림톡_채널에는_uses_custom_list_플래그가_아직_없다(): void
+    public function test_채널메타에_is_test_mode가_실린다(): void
     {
-        // 탭 배타 전환 플래그는 Phase 6 — 이번 Phase 채널 메타에는 없어야 한다.
-        $channels = $this->makeListener()->addChannels([]);
-        $alimtalk = collect($channels)->firstWhere('id', 'alimtalk');
+        // is_test_mode=true(검수) → 상태 배너 노출 기준. 채널 메타에 실려 프론트로 전달된다.
+        $listener = $this->makeListener(array_merge($this->fullSettings(), ['is_test_mode' => true]));
+        $channels = $listener->addChannels([]);
 
-        $this->assertArrayNotHasKey('uses_custom_list', $alimtalk);
+        $alimtalk = collect($channels)->firstWhere('id', 'alimtalk');
+        $this->assertTrue($alimtalk['is_test_mode'], '검수 모드면 채널 메타 is_test_mode=true.');
+
+        $sms = collect($channels)->firstWhere('id', 'sms');
+        $this->assertTrue($sms['is_test_mode']);
+    }
+
+    public function test_검수모드_해제시_is_test_mode가_false다(): void
+    {
+        $listener = $this->makeListener(array_merge($this->fullSettings(), ['is_test_mode' => false]));
+        $channels = $listener->addChannels([]);
+
+        $alimtalk = collect($channels)->firstWhere('id', 'alimtalk');
+        $this->assertFalse($alimtalk['is_test_mode'], '운영 모드면 is_test_mode=false.');
+    }
+
+    public function test_어떤_채널에도_uses_custom_list_플래그가_없다(): void
+    {
+        // Phase 6 재설계 A(⚑⚑ 결정 A): 알림톡 탭도 코어 기본 목록을 그대로 쓴다. 코어 목록을
+        // 숨기던 uses_custom_list 게이트·플래그는 폐기되었으므로 어느 채널에도 있으면 안 된다.
+        $channels = $this->makeListener()->addChannels([]);
+
+        $alimtalk = collect($channels)->firstWhere('id', 'alimtalk');
+        $this->assertArrayNotHasKey('uses_custom_list', $alimtalk, '알림톡은 코어 기본 목록을 쓰므로 플래그가 없어야 한다(재설계 A).');
+
+        $sms = collect($channels)->firstWhere('id', 'sms');
+        $this->assertArrayNotHasKey('uses_custom_list', $sms, 'sms 는 코어 기본 목록을 쓰므로 플래그가 없어야 한다.');
     }
 
     public function test_이미_존재하는_채널은_중복_추가되지_않는다(): void

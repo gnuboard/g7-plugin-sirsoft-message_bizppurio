@@ -23,8 +23,10 @@ use App\Services\PluginSettingsService;
  * ChannelManager 에 등록되어야 발화하므로, 드라이버 등록은 ServiceProvider::boot() 가
  * 담당한다(이 리스너는 채널 "노출·판정"만 책임진다).
  *
- * alimtalk 의 uses_custom_list 플래그(알림톡 탭 배타 전환)는 탭 UI 주입(§6-2)과 강결합이라
- * Phase 6 에서 이 리스너에 추가한다. Phase 3 에서는 채널 메타·readiness·발송 위임 골격만 둔다.
+ * 알림톡 탭은 코어 기본 목록·편집 모달을 그대로 사용한다(Phase 6 재설계, 계획서 ⚑⚑ 블록 A).
+ * 연결 템플릿·SMS 대체 등 알림톡 전용 설정은 코어 편집 모달에 전용 칸을 overlay 로 얹고
+ * 코어 저장 훅(core.notification_template.filter_update_data/after_update)에 편승해 저장하므로,
+ * 이 리스너는 코어 목록을 숨기는 별도 플래그를 두지 않는다.
  */
 class RegisterNotificationChannelsListener implements HookListenerInterface
 {
@@ -105,8 +107,14 @@ class RegisterNotificationChannelsListener implements HookListenerInterface
     {
         $existingIds = array_column($channels, 'id');
 
+        // 검수(테스트) 모드 여부를 채널 메타에 실어 프론트(availableChannels)로 전달한다.
+        // 알림톡·SMS 탭 상단 상태 배너가 이 값으로 "테스트 모드 — 실제 발송 안 됨"을 노출한다.
+        // 코어 getAvailableChannels 는 임의 필드를 보존하므로 프론트까지 그대로 도달한다.
+        $isTestMode = $this->isTestMode();
+
         foreach ($this->channelMetas() as $meta) {
             if (! in_array($meta['id'], $existingIds, true)) {
+                $meta['is_test_mode'] = $isTestMode;
                 $channels[] = $meta;
             }
         }
@@ -243,6 +251,18 @@ class RegisterNotificationChannelsListener implements HookListenerInterface
         $value = $this->pluginSettings->get(self::PLUGIN_IDENTIFIER, $key, '');
 
         return trim((string) $value) === '';
+    }
+
+    /**
+     * 검수(테스트) 모드 여부를 반환합니다.
+     *
+     * is_test_mode=true 이면 실제 발송이 이뤄지지 않는다(검수 환경). 상태 배너 노출 기준.
+     *
+     * @return bool 검수 모드면 true
+     */
+    private function isTestMode(): bool
+    {
+        return (bool) $this->pluginSettings->get(self::PLUGIN_IDENTIFIER, 'is_test_mode', true);
     }
 
     /**

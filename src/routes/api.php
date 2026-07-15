@@ -4,6 +4,7 @@ use App\Http\Middleware\EnforceIdentityPolicy;
 use App\Http\Middleware\RefreshTokenExpiration;
 use Illuminate\Support\Facades\Route;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\AlimtalkTemplateController;
+use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\NotificationBindingController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\BizppurioWebhookController;
 use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
 
@@ -80,6 +81,29 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->g
             Route::post('/{templateCode}/reuse', [AlimtalkTemplateController::class, 'reuse'])->name('reuse');
             Route::post('/{templateCode}/cancel-approval', [AlimtalkTemplateController::class, 'cancelApproval'])->name('cancel-approval');
             Route::post('/{templateCode}/release', [AlimtalkTemplateController::class, 'release'])->name('release');
+        });
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | 알림↔알림톡 템플릿 연동 (Phase 6 재설계) — 코어 편집 모달 전용 칸이 소비
+    |----------------------------------------------------------------------
+    |
+    | 알림톡 탭은 코어 기본 목록·편집 모달을 그대로 쓴다(⚑⚑ 결정 A). 연결 템플릿·SMS 대체
+    | 입력은 코어 편집 모달에 얹은 전용 칸(플러그인 overlay)에서 하고, 값을 바꾸면 즉시 이 API
+    | 로 저장한다(PO 확정 UX — 별도 저장 버튼 없이 변경 즉시 저장, 코어 저장 버튼 무관 →
+    | 코어 템플릿 무오염).
+    |
+    | 조회(index/approved-templates) = messaging.view / 저장(store) = messaging.manage.
+    */
+    Route::prefix('notification-bindings')->name('notification-bindings.')->group(function () {
+        Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.view')->group(function () {
+            Route::get('/', [NotificationBindingController::class, 'index'])->name('index');
+            Route::get('/approved-templates', [NotificationBindingController::class, 'approvedTemplates'])->name('approved-templates');
+        });
+
+        Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.manage')->group(function () {
+            Route::post('/', [NotificationBindingController::class, 'store'])->name('store');
         });
     });
 });

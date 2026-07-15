@@ -8,7 +8,7 @@ use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Api\Base\AdminBaseController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException;
+use Plugins\Sirsoft\MessageBizppurio\Concerns\GuardsKakaoRequests;
 use Plugins\Sirsoft\MessageBizppurio\Http\Requests\StoreAlimtalkTemplateRequest;
 use Plugins\Sirsoft\MessageBizppurio\Http\Requests\UpdateAlimtalkTemplateRequest;
 use Plugins\Sirsoft\MessageBizppurio\Http\Requests\UploadTemplateImageRequest;
@@ -29,6 +29,8 @@ use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkTemplateService;
  */
 class AlimtalkTemplateController extends AdminBaseController
 {
+    use GuardsKakaoRequests;
+
     /**
      * @param  AlimtalkTemplateService  $service  알림톡 템플릿 서비스
      */
@@ -44,6 +46,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 쿼리: status(templateStatus)·keyword(2~50자)·page·count
      *
      * @param  Request  $request  HTTP 요청
+     * @return JsonResponse data 에 templates·pagination
      */
     public function index(Request $request): JsonResponse
     {
@@ -63,6 +66,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 알림톡 템플릿 상세를 실시간 조회합니다.
      *
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse data.template 에 배지·가능 액션이 부가된 상세
      */
     public function show(string $templateCode): JsonResponse
     {
@@ -73,6 +77,8 @@ class AlimtalkTemplateController extends AdminBaseController
 
     /**
      * 템플릿 등록에 사용할 카테고리 전체를 조회합니다.
+     *
+     * @return JsonResponse data.categories 에 대분류·소분류 목록
      */
     public function categories(): JsonResponse
     {
@@ -83,6 +89,8 @@ class AlimtalkTemplateController extends AdminBaseController
 
     /**
      * 발신프로필(사용중) 정보를 조회합니다.
+     *
+     * @return JsonResponse data.profiles 에 발신프로필 상태 정보
      */
     public function profiles(): JsonResponse
     {
@@ -98,6 +106,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * templateImageUrl 로 사용한다.
      *
      * @param  UploadTemplateImageRequest  $request  이미지 파일 검증 Request
+     * @return JsonResponse data 에 image_url·image_name
      */
     public function uploadImage(UploadTemplateImageRequest $request): JsonResponse
     {
@@ -120,6 +129,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 알림톡 템플릿을 신규 등록합니다.
      *
      * @param  StoreAlimtalkTemplateRequest  $request  유형별 검증 Request
+     * @return JsonResponse data.template 에 등록된 템플릿(검수요청 시 REQ 상태)
      */
     public function store(StoreAlimtalkTemplateRequest $request): JsonResponse
     {
@@ -154,6 +164,7 @@ class AlimtalkTemplateController extends AdminBaseController
      *
      * @param  UpdateAlimtalkTemplateRequest  $request  유형별 검증 Request
      * @param  string  $templateCode  기존 템플릿 코드
+     * @return JsonResponse data.template 에 수정된 템플릿
      */
     public function update(UpdateAlimtalkTemplateRequest $request, string $templateCode): JsonResponse
     {
@@ -167,6 +178,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 알림톡 템플릿을 삭제합니다. (대기 + 검수 REG/REJ 상태만)
      *
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse 삭제 완료 응답
      */
     public function destroy(string $templateCode): JsonResponse
     {
@@ -182,6 +194,7 @@ class AlimtalkTemplateController extends AdminBaseController
      *
      * @param  Request  $request  HTTP 요청(comment 선택)
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse 검수 요청 완료 응답
      */
     public function requestInspection(Request $request, string $templateCode): JsonResponse
     {
@@ -196,6 +209,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 검수 요청을 취소합니다. (검수 REQ 상태만)
      *
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse 검수 취소 완료 응답
      */
     public function cancelRequest(string $templateCode): JsonResponse
     {
@@ -206,6 +220,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 승인된 템플릿을 중지합니다. (RDY/ACT 상태)
      *
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse 중지 완료 응답
      */
     public function stop(string $templateCode): JsonResponse
     {
@@ -216,6 +231,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 중지된 템플릿을 정상으로 되돌립니다. (STP 상태)
      *
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse 중지 해제 완료 응답
      */
     public function reuse(string $templateCode): JsonResponse
     {
@@ -226,6 +242,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 승인을 취소합니다(재검수 가능 상태로 복귀). (RDY/ACT 상태)
      *
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse 승인 취소 완료 응답
      */
     public function cancelApproval(string $templateCode): JsonResponse
     {
@@ -236,6 +253,7 @@ class AlimtalkTemplateController extends AdminBaseController
      * 휴면 템플릿을 해제합니다. (DMT 상태)
      *
      * @param  string  $templateCode  템플릿 코드
+     * @return JsonResponse 휴면 해제 완료 응답
      */
     public function release(string $templateCode): JsonResponse
     {
@@ -266,19 +284,5 @@ class AlimtalkTemplateController extends AdminBaseController
      *
      * @param  callable(): JsonResponse  $callback  실제 처리
      */
-    private function guard(callable $callback): JsonResponse
-    {
-        try {
-            return $callback();
-        } catch (BizppurioApiException $e) {
-            return ResponseHelper::error(
-                'sirsoft-message_bizppurio::messages.error.kakao_request_failed',
-                422,
-                [
-                    'kakao_message' => $e->getMessage(),
-                    'result_code' => $e->getResultCode(),
-                ],
-            );
-        }
-    }
+    // guard() 는 GuardsKakaoRequests 트레이트로 이관(연동 컨트롤러와 공유).
 }
