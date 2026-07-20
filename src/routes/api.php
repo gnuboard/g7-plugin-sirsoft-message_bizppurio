@@ -4,6 +4,7 @@ use App\Http\Middleware\EnforceIdentityPolicy;
 use App\Http\Middleware\RefreshTokenExpiration;
 use Illuminate\Support\Facades\Route;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\AlimtalkTemplateController;
+use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\DispatchResultController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\NotificationBindingController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\BizppurioWebhookController;
 use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
@@ -104,6 +105,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->g
 
         Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.manage')->group(function () {
             Route::post('/', [NotificationBindingController::class, 'store'])->name('store');
+        });
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | 코어 알림 발송 이력 결과 조회 (A-2) — 코어 이력 화면 overlay 가 소비
+    |----------------------------------------------------------------------
+    |
+    | 코어 "알림 발송 이력" 화면에 plugin overlay 로 얹은 결과 컬럼이, 현재 페이지의 코어 알림
+    | 로그 id 배열을 이 API 로 넘겨 비즈뿌리오 결과(상태·사유·잔액부족·대체발송)를 한 번에 조회
+    | 한다(N+1 회피). 코어 화면·코어 테이블 무수정 — 연결 표식은 우리 dispatch 쪽에만 둔다.
+    |
+    | 조회 = messaging.view.
+    */
+    Route::prefix('dispatch-results')->name('dispatch-results.')->group(function () {
+        Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.view')->group(function () {
+            // 화면 결과 컬럼용: 파라미터 없이 최근 결과 맵을 받아 row.id 로 매칭(타이밍 무관, 기본 경로).
+            Route::get('/recent', [DispatchResultController::class, 'recent'])->name('recent');
+            // 명시 로그 id 배열 조회(직접 조회용). 화면은 recent 를 쓴다.
+            Route::post('/lookup', [DispatchResultController::class, 'lookup'])->name('lookup');
         });
     });
 });

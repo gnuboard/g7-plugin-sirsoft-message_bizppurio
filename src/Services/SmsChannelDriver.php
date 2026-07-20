@@ -45,12 +45,14 @@ class SmsChannelDriver
      * @param  SmsTypeResolver  $typeResolver  SMS/LMS byte 판별
      * @param  MessagePayloadBuilder  $payloadBuilder  발송 payload 조립
      * @param  BizppurioDispatchRepositoryInterface  $dispatches  발송 이력 영속화(Phase 4)
+     * @param  DispatchLinkContext  $linkContext  발송 사이클 refkey↔코어 로그 연결 컨텍스트(A-2)
      */
     public function __construct(
         private readonly NotificationTemplateService $templateService,
         private readonly SmsTypeResolver $typeResolver,
         private readonly MessagePayloadBuilder $payloadBuilder,
         private readonly BizppurioDispatchRepositoryInterface $dispatches,
+        private readonly DispatchLinkContext $linkContext,
     ) {}
 
     /**
@@ -117,6 +119,10 @@ class SmsChannelDriver
             'source' => DispatchSource::Auto->value,
             'sent_at' => now(),
         ]);
+
+        // A-2: 이 발송 사이클 직후 발화할 코어 알림 로그(after_log_sent)에 이 dispatch 를 잇도록
+        // refkey 를 컨텍스트에 남긴다. LinkNotificationLogListener 가 그 로그 id 를 여기에 연결한다.
+        $this->linkContext->remember($refkey);
 
         SendMessageJob::dispatch($payload, $refkey);
     }

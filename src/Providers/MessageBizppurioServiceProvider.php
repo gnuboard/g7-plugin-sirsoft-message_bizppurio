@@ -12,6 +12,7 @@ use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRep
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificationBindingRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\BizppurioTokenService;
+use Plugins\Sirsoft\MessageBizppurio\Services\DispatchLinkContext;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\WebhookReportService;
 
@@ -50,6 +51,20 @@ class MessageBizppurioServiceProvider extends BasePluginServiceProvider
         BizppurioTokenService::class,
         WebhookReportService::class,
     ];
+
+    /**
+     * 서비스 컨테이너 바인딩을 등록합니다.
+     *
+     * DispatchLinkContext 는 한 발송 사이클(HTTP 요청/큐 잡) 안에서 refkey↔코어 로그 연결을
+     * 잇기 위해 상태를 공유해야 하므로 scoped(요청 단위 싱글턴)로 바인딩한다. 채널 드라이버와
+     * LinkNotificationLogListener 가 같은 인스턴스를 주입받아 refkey 를 주고받는다(A-2).
+     */
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->scoped(DispatchLinkContext::class);
+    }
 
     /**
      * 플러그인 루트 lang 디렉토리를 로드합니다.

@@ -33,6 +33,7 @@ return new class extends Migration
                 ->constrained('users', indexName: 'bizppurio_dispatch_user_fk')->nullOnDelete();
             $table->text('content')->comment('발송 본문(SMS) 또는 템플릿 참조(알림톡)');
             $table->string('notification_type', 100)->nullable()->comment('코어 notification_definitions.type 참조 (어느 알림). 수동발송 시 null');
+            $table->unsignedBigInteger('notification_log_id')->nullable()->comment('코어 notification_logs.id 연결 표식 (A-2). 코어 알림 발송 이력 화면에서 결과를 이 행에 붙이기 위한 매칭 키. 코어 테이블 무수정 — 연결 표식은 비즈뿌리오 쪽에만 둔다');
             $table->string('status', 20)->default('pending')->comment('발송 상태: pending / sent / success / failed (DispatchStatus enum)');
             $table->string('result_code', 10)->nullable()->comment('결과 코드 (발송응답 or 리포트)');
             $table->string('result_message', 255)->nullable()->comment('결과 사유 원본 (result_codes lang 해석 전)');
@@ -50,6 +51,7 @@ return new class extends Migration
             $table->index('sent_at', 'bizppurio_dispatch_sent_at_idx');
             $table->index('to_user_id', 'bizppurio_dispatch_user_idx');
             $table->index(['status', 'sent_at'], 'bizppurio_dispatch_status_sent_idx');
+            $table->index('notification_log_id', 'bizppurio_dispatch_notif_log_idx');
         });
 
         if (DB::getDriverName() === 'mysql') {

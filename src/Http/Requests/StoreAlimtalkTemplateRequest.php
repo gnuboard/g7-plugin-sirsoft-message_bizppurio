@@ -25,6 +25,8 @@ class StoreAlimtalkTemplateRequest extends FormRequest
 {
     /**
      * 권한 검사는 라우트 미들웨어가 담당 — 항상 통과.
+     *
+     * @return bool
      */
     public function authorize(): bool
     {

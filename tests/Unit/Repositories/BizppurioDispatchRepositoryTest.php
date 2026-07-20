@@ -72,4 +72,64 @@ class BizppurioDispatchRepositoryTest extends PluginTestCase
         $byNumber = $this->repo->paginate(['keyword' => '9999']);
         $this->assertSame(1, $byNumber->total());
     }
+
+    public function test_link_notification_log_by_refkey(): void
+    {
+        $this->makeDispatch(['refkey' => 'to_link']);
+
+        $linked = $this->repo->linkNotificationLog('to_link', 777);
+        $this->assertTrue($linked);
+        $this->assertSame(777, (int) $this->repo->findByRefkey('to_link')->notification_log_id);
+    }
+
+    public function test_link_notification_log_missing_refkey_returns_false(): void
+    {
+        $this->assertFalse($this->repo->linkNotificationLog('nope', 1));
+    }
+
+    public function test_find_by_notification_log_ids_keyed(): void
+    {
+        $this->makeDispatch(['refkey' => 'a', 'notification_log_id' => 10]);
+        $this->makeDispatch(['refkey' => 'b', 'notification_log_id' => 20]);
+        $this->makeDispatch(['refkey' => 'c', 'notification_log_id' => null]); // 미연결
+
+        $map = $this->repo->findByNotificationLogIdsKeyed([10, 20, 30]);
+
+        $this->assertCount(2, $map);
+        $this->assertSame('a', $map[10]->refkey);
+        $this->assertSame('b', $map[20]->refkey);
+        $this->assertFalse($map->has(30));
+    }
+
+    public function test_find_by_notification_log_ids_empty_returns_empty(): void
+    {
+        $this->assertTrue($this->repo->findByNotificationLogIdsKeyed([])->isEmpty());
+    }
+
+    public function test_recent_linked_keyed_excludes_unlinked_and_keys_by_log_id(): void
+    {
+        $this->makeDispatch(['refkey' => 'x', 'notification_log_id' => 11]);
+        $this->makeDispatch(['refkey' => 'y', 'notification_log_id' => 22]);
+        $this->makeDispatch(['refkey' => 'z', 'notification_log_id' => null]); // 미연결 → 제외
+
+        $map = $this->repo->recentLinkedKeyed();
+
+        $this->assertCount(2, $map);
+        $this->assertSame('x', $map[11]->refkey);
+        $this->assertSame('y', $map[22]->refkey);
+    }
+
+    public function test_recent_linked_keyed_respects_limit(): void
+    {
+        foreach (range(1, 5) as $i) {
+            $this->makeDispatch(['refkey' => 'r'.$i, 'notification_log_id' => $i]);
+        }
+
+        // 최신(id 큰) 것부터 limit 만큼 — 최근 2건만
+        $map = $this->repo->recentLinkedKeyed(2);
+
+        $this->assertCount(2, $map);
+        $this->assertTrue($map->has(5));
+        $this->assertTrue($map->has(4));
+    }
 }

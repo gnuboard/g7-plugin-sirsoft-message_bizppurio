@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugins\Sirsoft\MessageBizppurio\Repositories;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
 
@@ -86,5 +87,60 @@ class BizppurioDispatchRepository implements BizppurioDispatchRepositoryInterfac
         }
 
         return $query->orderByDesc('created_at')->paginate($perPage);
+    }
+
+    /**
+     * refkey 로 dispatch 를 찾아 코어 알림 로그 id 를 연결합니다 (A-2 연결고리).
+     *
+     * @param  string  $refkey  발송 사이클에서 부여한 refkey
+     * @param  int  $notificationLogId  코어 notification_logs.id
+     * @return bool 연결 성공 여부(대상 없으면 false)
+     */
+    public function linkNotificationLog(string $refkey, int $notificationLogId): bool
+    {
+        $dispatch = BizppurioDispatch::query()->byRefkey($refkey)->first();
+
+        if ($dispatch === null) {
+            return false;
+        }
+
+        $dispatch->notification_log_id = $notificationLogId;
+        $dispatch->save();
+
+        return true;
+    }
+
+    /**
+     * 코어 알림 로그 id 목록으로 dispatch 를 일괄 조회해 log id 키 맵으로 반환합니다 (A-2 표시).
+     *
+     * @param  array<int, int>  $notificationLogIds  코어 로그 id 목록
+     * @return Collection<int, BizppurioDispatch> notification_log_id 를 키로 하는 dispatch 맵
+     */
+    public function findByNotificationLogIdsKeyed(array $notificationLogIds): Collection
+    {
+        if ($notificationLogIds === []) {
+            return collect();
+        }
+
+        return BizppurioDispatch::query()
+            ->whereIn('notification_log_id', $notificationLogIds)
+            ->get()
+            ->keyBy('notification_log_id');
+    }
+
+    /**
+     * 코어 로그에 연결된 최근 dispatch 를 log id 키 맵으로 반환합니다 (A-2 표시, 타이밍 무관).
+     *
+     * @param  int  $limit  최근 dispatch 조회 상한
+     * @return Collection<int, BizppurioDispatch> notification_log_id 를 키로 하는 dispatch 맵
+     */
+    public function recentLinkedKeyed(int $limit = 1000): Collection
+    {
+        return BizppurioDispatch::query()
+            ->whereNotNull('notification_log_id')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->keyBy('notification_log_id');
     }
 }

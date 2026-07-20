@@ -10,9 +10,10 @@ use App\Services\NotificationTemplateService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
-use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Jobs\SendMessageJob;
+use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioDispatchRepository;
+use Plugins\Sirsoft\MessageBizppurio\Services\DispatchLinkContext;
 use Plugins\Sirsoft\MessageBizppurio\Services\MessagePayloadBuilder;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsTypeResolver;
@@ -59,6 +60,7 @@ class SmsChannelDriverTest extends PluginTestCase
             new SmsTypeResolver,
             $builder ?? $this->spyBuilder(),
             new BizppurioDispatchRepository,
+            new DispatchLinkContext,
         );
     }
 

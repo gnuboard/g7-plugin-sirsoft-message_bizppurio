@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugins\Sirsoft\MessageBizppurio\Models;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,16 +29,17 @@ use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
  * @property int|null $to_user_id
  * @property string $content
  * @property string|null $notification_type
+ * @property int|null $notification_log_id
  * @property string $status
  * @property string|null $result_code
  * @property string|null $result_message
  * @property string|null $fallback_status
  * @property string $source
- * @property \Carbon\Carbon|null $sent_at
- * @property \Carbon\Carbon|null $reported_at
+ * @property Carbon|null $sent_at
+ * @property Carbon|null $reported_at
  * @property array|null $raw_payload
- * @property \Carbon\Carbon|null $created_at
- * @property \Carbon\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read User|null $user
  */
 class BizppurioDispatch extends Model
@@ -64,6 +66,7 @@ class BizppurioDispatch extends Model
         'to_user_id',
         'content',
         'notification_type',
+        'notification_log_id',
         'status',
         'result_code',
         'result_message',
@@ -86,6 +89,7 @@ class BizppurioDispatch extends Model
             'status' => DispatchStatus::class,
             'source' => DispatchSource::class,
             'to_user_id' => 'integer',
+            'notification_log_id' => 'integer',
             'sent_at' => 'datetime',
             'reported_at' => 'datetime',
             'raw_payload' => 'array',

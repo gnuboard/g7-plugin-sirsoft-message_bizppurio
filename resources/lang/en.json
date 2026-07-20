@@ -84,6 +84,18 @@
         "setup_action": "Set up",
         "test_mode": "Test mode — messages are not actually sent."
     },
+    "dispatch_result": {
+        "column_header": "SMS/Alimtalk Result",
+        "low_balance": "Low balance",
+        "fallback": "SMS fallback {status}",
+        "detail_title": "SMS/Alimtalk delivery result",
+        "channel_label": "Channel: {channel}"
+    },
+    "editor": {
+        "data_source": {
+            "dispatch_results": "Bizppurio dispatch results"
+        }
+    },
     "templates": {
         "title": "Alimtalk Templates",
         "description": "Register, inspect, and manage KakaoTalk alimtalk templates. Only approved templates can be used for notification bindings.",

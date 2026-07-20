@@ -9,6 +9,7 @@ use App\Extension\ModuleManager;
 use Database\Seeders\NotificationDefinitionSeeder;
 use Illuminate\Support\Facades\Log;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
+use Plugins\Sirsoft\MessageBizppurio\Listeners\LinkNotificationLogListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\SeedChannelTemplatesListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\ValidateBizppurioSettingsListener;
@@ -329,6 +330,7 @@ class Plugin extends AbstractPlugin
      * - RegisterNotificationChannelsListener: 채널 등록/readiness/3영역 노출(Phase 3)
      * - SeedChannelTemplatesListener: 회원 알림에 sms·alimtalk template 증강(Phase 6 결정 D — 시딩 필터 훅)
      * - GuestPhoneExtractListener: 비회원 주문 전화번호 주입(Phase 3)
+     * - LinkNotificationLogListener: 코어 알림 로그↔dispatch 연결(A-2 — 발송 이력 결과 주입 연결고리)
      * - ValidateBizppurioSettingsListener: 환경설정 검증
      *
      * @return array<class-string>
@@ -339,6 +341,7 @@ class Plugin extends AbstractPlugin
             RegisterNotificationChannelsListener::class,
             SeedChannelTemplatesListener::class,
             GuestPhoneExtractListener::class,
+            LinkNotificationLogListener::class,
             ValidateBizppurioSettingsListener::class,
         ];
     }

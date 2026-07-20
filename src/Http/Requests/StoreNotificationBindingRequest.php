@@ -16,6 +16,8 @@ class StoreNotificationBindingRequest extends FormRequest
 {
     /**
      * 권한은 라우트 미들웨어(messaging.manage)에서 처리한다.
+     *
+     * @return bool
      */
     public function authorize(): bool
     {

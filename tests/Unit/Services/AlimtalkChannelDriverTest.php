@@ -16,6 +16,7 @@ use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioNotificationBinding;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioDispatchRepository;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificationBindingRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkChannelDriver;
+use Plugins\Sirsoft\MessageBizppurio\Services\DispatchLinkContext;
 use Plugins\Sirsoft\MessageBizppurio\Services\MessagePayloadBuilder;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
@@ -90,6 +91,7 @@ class AlimtalkChannelDriverTest extends PluginTestCase
             $this->fakeBindings($binding),
             $builder ?? $this->spyBuilder(),
             new BizppurioDispatchRepository,
+            new DispatchLinkContext,
         );
     }
 
