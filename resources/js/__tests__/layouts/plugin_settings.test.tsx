@@ -188,3 +188,59 @@ describe('plugin_settings.json — i18n 키 정합', () => {
         }
     });
 });
+
+describe('plugin_settings.json — 탭 전환', () => {
+    // 탭 버튼은 query.tab 을 바꾸며 화면(if 조건부 패널)을 다시 그려야 하므로
+    // replaceUrl(URL만 변경, if 재평가 없음) 이 아니라 navigate 를 써야 한다.
+    const tabButtonHandlers = (id: string): string[] => {
+        const btn = findById(layout, id);
+        const handlers: string[] = [];
+        const walk = (node: unknown): void => {
+            if (!node || typeof node !== 'object') return;
+            const n = node as Record<string, unknown>;
+            if (typeof n.handler === 'string') handlers.push(n.handler);
+            for (const v of Object.values(n)) {
+                if (Array.isArray(v)) v.forEach(walk);
+                else if (v && typeof v === 'object') walk(v);
+            }
+        };
+        walk((btn as { actions?: unknown })?.actions);
+        return handlers;
+    };
+
+    it('환경설정 탭 버튼은 navigate 로 화면을 전환한다 (replaceUrl 금지)', () => {
+        const handlers = tabButtonHandlers('tab_connection');
+        expect(handlers).toContain('navigate');
+        expect(handlers).not.toContain('replaceUrl');
+    });
+
+    it('알림톡 템플릿 탭 버튼은 navigate 로 화면을 전환한다 (replaceUrl 금지)', () => {
+        const handlers = tabButtonHandlers('tab_templates');
+        expect(handlers).toContain('navigate');
+        expect(handlers).not.toContain('replaceUrl');
+    });
+});
+
+describe('plugin_settings.json — 목록 조회 실패 표시', () => {
+    it('alimtalk_templates 데이터소스가 실패 사유를 _local.templateListError 에 담는다', () => {
+        const sources = (root as { data_sources?: AnyNode[] }).data_sources ?? [];
+        const ds = sources.find((s) => s.id === 'alimtalk_templates') as
+            | Record<string, unknown>
+            | undefined;
+        expect(ds).toBeTruthy();
+        const onError = JSON.stringify(ds?.onError ?? {});
+        // 카카오가 준 사유(kakao_message)를 우선 노출, 없으면 error.message 폴백
+        expect(onError).toContain('templateListError');
+        expect(onError).toContain('kakao_message');
+    });
+
+    it('목록 오류 배너가 templateListError 조건으로 존재한다', () => {
+        const banner = findById(layout, 'templates_list_error') as
+            | Record<string, unknown>
+            | undefined;
+        expect(banner).toBeTruthy();
+        expect(banner?.if).toBe('{{_local.templateListError}}');
+        // 사유 본문을 그대로 렌더한다
+        expect(JSON.stringify(banner)).toContain('{{_local.templateListError}}');
+    });
+});

@@ -134,6 +134,42 @@ class BizppurioKakaoApiClientTest extends PluginTestCase
         $this->client()->getSenderProfiles();
     }
 
+    public function test_http_실패시_카카오_message와_code를_예외에_싣는다(): void
+    {
+        Http::fake([
+            'kapi.ppurio.com/*' => Http::response(
+                ['code' => '403', 'message' => '접근할 수 없는 IP 입니다. (114.207.113.206)'],
+                403,
+            ),
+        ]);
+
+        try {
+            $this->client()->getSenderProfiles();
+            $this->fail('BizppurioApiException 이 발생해야 한다.');
+        } catch (BizppurioApiException $e) {
+            $this->assertSame('접근할 수 없는 IP 입니다. (114.207.113.206)', $e->getMessage());
+            $this->assertSame('403', $e->getResultCode());
+            $this->assertSame(403, $e->getHttpStatus());
+        }
+    }
+
+    public function test_http_실패_body에_message가_없으면_일반문구로_폴백한다(): void
+    {
+        Http::fake(['kapi.ppurio.com/*' => Http::response([], 500)]);
+
+        try {
+            $this->client()->getSenderProfiles();
+            $this->fail('BizppurioApiException 이 발생해야 한다.');
+        } catch (BizppurioApiException $e) {
+            $this->assertSame(
+                __('sirsoft-message_bizppurio::messages.error.kakao_request_failed'),
+                $e->getMessage(),
+            );
+            $this->assertNull($e->getResultCode());
+            $this->assertSame(500, $e->getHttpStatus());
+        }
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();

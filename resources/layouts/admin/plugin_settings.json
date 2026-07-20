@@ -34,7 +34,8 @@
             "method": "GET",
             "auto_fetch": true,
             "auth_required": true,
-            "initLocal": "reportInfo"
+            "initLocal": "reportInfo",
+            "if": "{{(query.tab ?? 'connection') === 'connection'}}"
         },
         {
             "id": "alimtalk_templates",
@@ -46,6 +47,14 @@
             "params": {
                 "status": "{{_local.templateStatus ?? ''}}",
                 "keyword": "{{_local.templateKeyword ?? ''}}"
+            },
+            "onSuccess": {
+                "handler": "setState",
+                "params": { "target": "local", "templateListError": null }
+            },
+            "onError": {
+                "handler": "setState",
+                "params": { "target": "local", "templateListError": "{{error.errors?.kakao_message ?? error.message}}" }
             }
         },
         {
@@ -95,8 +104,8 @@
                                 "actions": [
                                     {
                                         "type": "click",
-                                        "handler": "replaceUrl",
-                                        "params": { "query": { "tab": "connection" }, "mergeQuery": true }
+                                        "handler": "navigate",
+                                        "params": { "path": "/admin/plugins/{{route.identifier}}/settings", "query": { "tab": "connection" }, "mergeQuery": true, "replace": true }
                                     }
                                 ],
                                 "children": [
@@ -117,12 +126,12 @@
                                         "handler": "sequence",
                                         "actions": [
                                             {
-                                                "handler": "replaceUrl",
-                                                "params": { "query": { "tab": "templates" }, "mergeQuery": true }
-                                            },
-                                            {
                                                 "handler": "setState",
                                                 "params": { "target": "local", "templateView": "list" }
+                                            },
+                                            {
+                                                "handler": "navigate",
+                                                "params": { "path": "/admin/plugins/{{route.identifier}}/settings", "query": { "tab": "templates" }, "mergeQuery": true, "replace": true }
                                             },
                                             {
                                                 "handler": "refetchDataSource",
@@ -150,7 +159,7 @@
                         "type": "basic",
                         "name": "Div",
                         "props": {
-                            "className": "alert-info"
+                            "className": "mt-6 alert-info"
                         },
                         "children": [
                             {
@@ -920,6 +929,38 @@
                 "props": { "className": "mt-6" },
                 "children": [
                     {
+                        "id": "templates_list_error",
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{_local.templateListError}}",
+                        "props": { "className": "mb-4 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950 p-4 flex gap-2 items-start" },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Icon",
+                                "props": { "name": "circle-exclamation", "size": "md", "className": "text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" }
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": { "className": "text-sm font-medium text-red-800 dark:text-red-200" },
+                                        "text": "$t:sirsoft-message_bizppurio.templates.list_error.title"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": { "className": "text-xs text-red-700 dark:text-red-300 mt-1 leading-relaxed" },
+                                        "text": "{{_local.templateListError}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
                         "id": "templates_readiness",
                         "type": "basic",
                         "name": "Div",
@@ -981,7 +1022,7 @@
                                         "name": "Button",
                                         "props": { "type": "button", "className": "btn btn-secondary btn-sm whitespace-nowrap" },
                                         "actions": [
-                                            { "type": "click", "handler": "replaceUrl", "params": { "query": { "tab": "connection" }, "mergeQuery": true } }
+                                            { "type": "click", "handler": "navigate", "params": { "path": "/admin/plugins/{{route.identifier}}/settings", "query": { "tab": "connection" }, "mergeQuery": true, "replace": true } }
                                         ],
                                         "children": [
                                             { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.readiness.go_settings" }

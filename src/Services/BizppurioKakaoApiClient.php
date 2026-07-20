@@ -6,6 +6,7 @@ namespace Plugins\Sirsoft\MessageBizppurio\Services;
 
 use App\Services\PluginSettingsService;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException;
 
@@ -111,10 +112,7 @@ class BizppurioKakaoApiClient
             ]);
 
         if ($response->failed()) {
-            throw new BizppurioApiException(
-                __('sirsoft-message_bizppurio::messages.error.kakao_request_failed'),
-                httpStatus: $response->status(),
-            );
+            throw $this->failureException($response);
         }
 
         $result = $response->json();
@@ -178,10 +176,7 @@ class BizppurioKakaoApiClient
             ]));
 
         if ($response->failed()) {
-            throw new BizppurioApiException(
-                __('sirsoft-message_bizppurio::messages.error.kakao_request_failed'),
-                httpStatus: $response->status(),
-            );
+            throw $this->failureException($response);
         }
 
         $result = $response->json();
@@ -194,6 +189,31 @@ class BizppurioKakaoApiClient
         }
 
         return $result;
+    }
+
+    /**
+     * HTTP 실패 응답에서 카카오가 준 사유(message)와 결과코드(code)를 추출해 예외를 만듭니다.
+     *
+     * 카카오 관리 API 는 실패 시에도 `{code, message}` 봉투를 반환하므로, body 를 파싱해
+     * 운영자에게 실제 사유(접근 불가 IP·반려 사유·계정 오류 등)를 노출한다. body 파싱이
+     * 불가하거나 message 가 비어 있으면 일반 실패 문구로 폴백한다.
+     *
+     * @param  Response  $response  실패한 HTTP 응답
+     * @return BizppurioApiException 카카오 사유·결과코드·HTTP 상태가 담긴 예외
+     */
+    private function failureException(Response $response): BizppurioApiException
+    {
+        $body = $response->json();
+        $message = is_array($body) ? (string) ($body['message'] ?? '') : '';
+        $code = is_array($body) ? (string) ($body['code'] ?? '') : '';
+
+        return new BizppurioApiException(
+            $message !== ''
+                ? $message
+                : __('sirsoft-message_bizppurio::messages.error.kakao_request_failed'),
+            resultCode: $code !== '' ? $code : null,
+            httpStatus: $response->status(),
+        );
     }
 
     /**

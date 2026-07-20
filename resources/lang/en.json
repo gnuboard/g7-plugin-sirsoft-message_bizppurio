@@ -95,6 +95,9 @@
             "sender_key_missing": "Alimtalk sender profile key",
             "note": "Enter the items above on the Settings tab to browse and register templates. Actual delivery requires turning off test mode and using templates approved by Kakao."
         },
+        "list_error": {
+            "title": "Failed to load the template list"
+        },
         "list": {
             "new": "New Template",
             "refresh": "Refresh",
