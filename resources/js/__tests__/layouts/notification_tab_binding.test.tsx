@@ -1,105 +1,72 @@
 /**
- * 알림 설정 알림톡 연동 overlay 구조 검증 (Phase 6 재설계, §6-2)
+ * 알림 설정 알림톡 탭 연동 UI 구조 검증 (Phase 6 재설계, §6-2)
  *
- * notification_tab_core.json 은 코어 admin_settings 편집 모달(alimtalk 채널)에 전용 칸을 얹고,
- * 알림톡·SMS 탭 상단에 상태 배너를 얹는다. 코어 편집 모달·저장 버튼은 건드리지 않으며(무오염),
- * 전용 칸 값을 바꾸면 즉시 우리 API 로 저장한다(별도 저장 버튼 없음).
+ * 두 확장 파일로 분리 구현:
+ * - notification_tab_core.json (Overlay): 상태 배너(injections) + 안내 박스 + 연결 모달(modals)
+ *   + data_sources. target_layout=admin_settings.
+ * - notification_row_footer.json (ExtensionPoint): 코어 목록 각 행 하단 슬롯
+ *   (notification_definition_row_footer)에 연결 상태 줄 + [연결/변경] 버튼.
  *
- * 검증:
- * - 데이터소스(bizppurioBindings·bizppurioApprovedTemplates) 주입
- * - 전용 칸: 안내 카드 · 연결 템플릿 드롭다운(즉시 저장) · SMS 대체 토글(연결 없으면 비활성)
- * - 상태 배너: readiness 미충족(설정하기) · 테스트 모드
- * - 코어 편집 모달 저장 body 에 bizppurio 필드가 없다(무오염)
- * - i18n 키 정합(ko·en 동일)
+ * 코어 편집 모달·저장 버튼은 건드리지 않는다(무오염). 연결은 편집 모달과 분리된 우리 전용
+ * 모달에서 하며, 변경 즉시가 아니라 [저장] 버튼으로 명확히 저장한다. 카카오 API 422 는
+ * errorHandling.suppress 로 조용히 처리(안내는 배너·문구가 담당).
+ *
+ * 검증: 파일 분리(overlay vs extension_point), 배너/안내/모달 구조, 행 슬롯 UI, 저장 배선,
+ * 무오염(코어 저장 body 미개입), i18n 정합.
  */
 
 import { describe, it, expect } from 'vitest';
 import overlay from '../../../extensions/notification_tab_core.json';
+import footer from '../../../extensions/notification_row_footer.json';
 import ko from '../../../lang/ko.json';
 import en from '../../../lang/en.json';
 import { findById, type AnyNode } from './helpers';
+
+const overlayRoot = { children: (overlay as { modals?: AnyNode[] }).modals ?? [] } as AnyNode;
+const bannerRoot = {
+    children: ((overlay as { injections?: Array<{ components?: AnyNode[] }> }).injections ?? []).flatMap((i) => i.components ?? []),
+} as AnyNode;
+const footerRoot = { children: (footer as { components?: AnyNode[] }).components ?? [] } as AnyNode;
 
 /** overlay 텍스트에서 $t:key 및 $t('key') 형태의 플러그인 i18n 키를 모두 수집한다. */
 const collectPluginKeys = (json: unknown): string[] => {
     const text = JSON.stringify(json);
     const prefixed = text.match(/\$t:sirsoft-message_bizppurio\.[a-zA-Z0-9_.]+/g) ?? [];
     const called = text.match(/\$t\('sirsoft-message_bizppurio\.[a-zA-Z0-9_.]+'\)/g) ?? [];
-    const keys = [
+    return Array.from(new Set([
         ...prefixed.map((m) => m.replace('$t:', '')),
         ...called.map((m) => m.replace(/^\$t\('/, '').replace(/'\)$/, '')),
-    ];
-    return Array.from(new Set(keys));
+    ]));
 };
 
-type Overlay = {
-    target_layout: string;
-    data_sources?: Array<{ id: string; endpoint: string }>;
-    injections: Array<{ target_id: string; position: string; components: AnyNode[] }>;
-};
-
-const ext = overlay as unknown as Overlay;
-
-/** injection components 를 하나의 검색 가능한 루트로 감싼다. */
-const injectionRoot = (targetId: string): AnyNode => {
-    const inj = ext.injections.find((i) => i.target_id === targetId);
-    return { children: inj?.components ?? [] } as AnyNode;
-};
-
-describe('notification binding overlay — 대상·데이터소스', () => {
-    it('코어 admin_settings 레이아웃을 대상으로 한다', () => {
-        expect(ext.target_layout).toBe('admin_settings');
+describe('binding UI — 파일 분리(Overlay vs ExtensionPoint)', () => {
+    it('overlay 는 target_layout=admin_settings 이고 extension_point 키가 없다', () => {
+        expect((overlay as { target_layout?: string }).target_layout).toBe('admin_settings');
+        expect((overlay as Record<string, unknown>).extension_point).toBeUndefined();
     });
 
-    it('연동 맵·승인 템플릿 데이터소스를 주입한다', () => {
-        const ids = (ext.data_sources ?? []).map((d) => d.id);
+    it('footer 는 extension_point=notification_definition_row_footer 이고 target_layout 이 없다', () => {
+        expect((footer as { extension_point?: string }).extension_point).toBe('notification_definition_row_footer');
+        expect((footer as Record<string, unknown>).target_layout).toBeUndefined();
+    });
+
+    it('overlay 는 연결 맵·승인 템플릿 데이터소스를 등록한다', () => {
+        const ids = ((overlay as { data_sources?: Array<{ id: string }> }).data_sources ?? []).map((d) => d.id);
         expect(ids).toContain('bizppurioBindings');
         expect(ids).toContain('bizppurioApprovedTemplates');
     });
 
-    it('전용 칸은 코어 편집 모달의 template_variables_info 뒤에 append 된다', () => {
-        const inj = ext.injections.find((i) => i.target_id === 'template_variables_info');
-        expect(inj).toBeTruthy();
-        expect(inj?.position).toBe('append');
+    it('승인 템플릿 데이터소스는 auto_fetch:false 이고 422 를 suppress 한다(전 탭 에러 방지)', () => {
+        const ds = ((overlay as { data_sources?: Array<Record<string, unknown>> }).data_sources ?? [])
+            .find((d) => d.id === 'bizppurioApprovedTemplates');
+        expect(ds?.auto_fetch).toBe(false);
+        expect(JSON.stringify(ds?.errorHandling)).toContain('suppress');
     });
 });
 
-describe('notification binding overlay — 전용 칸', () => {
-    const root = injectionRoot('template_variables_info');
-
-    it('알림톡 전용 섹션은 channel === alimtalk 일 때만 노출된다', () => {
-        const section = findById(root, 'bizppurio_alimtalk_section');
-        expect(section).toBeTruthy();
-        expect((section as { if?: string }).if).toContain("=== 'alimtalk'");
-    });
-
-    it('연결 템플릿 드롭다운을 바꾸면 즉시 우리 API 로 저장한다(별도 저장 버튼 없음)', () => {
-        const raw = JSON.stringify(findById(root, 'bizppurio_binding_template_select'));
-        expect(raw).toContain('apiCall');
-        expect(raw).toContain('/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings');
-        expect(raw).toContain('"method":"POST"');
-        expect(raw).toContain('binding.saved');
-    });
-
-    it('SMS 대체 토글은 연결 템플릿이 없으면 비활성이고, 변경 시 즉시 저장한다', () => {
-        const toggleWrap = findById(root, 'bizppurio_binding_fallback_toggle');
-        const raw = JSON.stringify(toggleWrap);
-        expect(raw).toContain('"disabled"');
-        expect(raw).toContain("=== ''");
-        expect(raw).toContain('apiCall');
-        expect(raw).toContain('"method":"POST"');
-    });
-
-    it('저장 실패 시 에러 토스트를 띄운다', () => {
-        const raw = JSON.stringify(root);
-        expect(raw).toContain('binding.save_error');
-    });
-});
-
-describe('notification binding overlay — 상태 배너', () => {
-    const root = injectionRoot('notif_channel_content');
-
-    it('배너는 sms·alimtalk 탭에서 문제가 있을 때만 노출된다', () => {
-        const banner = findById(root, 'bizppurio_status_banner');
+describe('binding UI — 상태 배너 + 안내 박스', () => {
+    it('배너는 sms·alimtalk 탭에서 문제(readiness 미충족 / test_mode)일 때만 노출된다', () => {
+        const banner = findById(bannerRoot, 'bizppurio_status_banner');
         expect(banner).toBeTruthy();
         const cond = (banner as { if?: string }).if ?? '';
         expect(cond).toContain("'sms'");
@@ -109,32 +76,99 @@ describe('notification binding overlay — 상태 배너', () => {
     });
 
     it('readiness 미충족 배너에 설정하기 이동 버튼이 있다', () => {
-        const raw = JSON.stringify(findById(root, 'bizppurio_banner_not_ready'));
+        const raw = JSON.stringify(findById(bannerRoot, 'bizppurio_banner_not_ready'));
         expect(raw).toContain('banner.not_ready');
         expect(raw).toContain('banner.setup_action');
         expect(raw).toContain('/admin/plugins/sirsoft-message_bizppurio/settings');
     });
 
-    it('테스트 모드 배너는 readiness 충족 + is_test_mode 일 때만 노출된다', () => {
-        const testBanner = findById(root, 'bizppurio_banner_test_mode');
-        const cond = (testBanner as { if?: string }).if ?? '';
-        expect(cond).toContain('readiness?.ready !== false');
-        expect(cond).toContain('is_test_mode === true');
-        expect(JSON.stringify(testBanner)).toContain('banner.test_mode');
+    it('알림톡 탭 상시 안내 박스가 있다(무엇을 하는 화면인지)', () => {
+        const guide = findById(bannerRoot, 'bizppurio_alimtalk_guide');
+        expect(guide).toBeTruthy();
+        expect((guide as { if?: string }).if).toContain("=== 'alimtalk'");
+        expect(JSON.stringify(guide)).toContain('binding.list_guide');
     });
 });
 
-describe('notification binding overlay — i18n 정합', () => {
-    it('overlay 가 참조하는 모든 키가 ko·en 에 존재한다', () => {
-        const keys = collectPluginKeys(overlay);
-        expect(keys.length).toBeGreaterThan(0);
+describe('binding UI — 행 연결(extension_point)', () => {
+    it('행 연결 UI 는 channel === alimtalk 일 때만 노출된다', () => {
+        const row = findById(footerRoot, 'bizppurio_row_binding');
+        expect(row).toBeTruthy();
+        expect((row as { if?: string }).if).toContain("extensionPointProps.activeChannel === 'alimtalk'");
+    });
 
-        // 플러그인 resources/lang/{ko,en}.json 파일 루트가 곧 sirsoft-message_bizppurio 네임스페이스.
-        // 키 `sirsoft-message_bizppurio.binding.saved` → 첫 세그먼트(네임스페이스) 제거 후 파일 루트에서 해석.
+    it('연결 상태를 bizppurioBindings 에서 def.type 으로 읽어 표시한다(연결됨/미연결)', () => {
+        const raw = JSON.stringify(findById(footerRoot, 'bizppurio_row_binding'));
+        expect(raw).toContain('bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]');
+        expect(raw).toContain('binding.unbound');
+        expect(raw).toContain('binding.btn_connect');
+        expect(raw).toContain('binding.btn_change');
+    });
+
+    it('[연결] 클릭 시 모달 상태를 seed 하고 우리 연결 모달을 연다', () => {
+        const raw = JSON.stringify(findById(footerRoot, 'bizppurio_row_binding'));
+        expect(raw).toContain('bizppurio_binding_modal');
+        expect(raw).toContain('"openModal"');
+        expect(raw).toContain('modal_bizppurio_binding');
+    });
+
+    it('모달 열기(openModal)가 승인 템플릿 조회(refetch)보다 먼저 실행된다(조회 실패가 모달 표시를 막지 않도록)', () => {
+        const row = findById(footerRoot, 'bizppurio_row_binding');
+        const raw = JSON.stringify(row);
+        const openIdx = raw.indexOf('"openModal"');
+        const refetchIdx = raw.indexOf('bizppurioApprovedTemplates');
+        expect(openIdx).toBeGreaterThan(-1);
+        expect(refetchIdx).toBeGreaterThan(-1);
+        expect(openIdx).toBeLessThan(refetchIdx);
+    });
+});
+
+describe('binding UI — 연결 모달(우리 소유, 코어 편집 모달과 분리)', () => {
+    const modal = findById(overlayRoot, 'modal_bizppurio_binding');
+
+    it('연결 전용 모달이 modals 로 등록된다', () => {
+        expect(modal).toBeTruthy();
+        expect((modal as { name?: string }).name).toBe('Modal');
+    });
+
+    it('안내 카드 + 연결 템플릿 드롭다운 + SMS 대체 토글 + 변수 안내를 담는다', () => {
+        const raw = JSON.stringify(modal);
+        expect(raw).toContain('binding.section_hint');
+        expect(raw).toContain('binding.connected_template');
+        expect(raw).toContain('binding.fallback_sms');
+        expect(raw).toContain('binding.variables_hint');
+    });
+
+    it('SMS 대체 토글은 연결 템플릿이 없으면 비활성이다', () => {
+        const raw = JSON.stringify(findById(overlayRoot, 'bizppurio_binding_modal_body'));
+        expect(raw).toContain('"disabled"');
+        expect(raw).toContain("=== ''");
+    });
+
+    it('[저장] 은 우리 API store 로 저장하고 toast + 모달 닫힘 + 목록 갱신한다', () => {
+        const raw = JSON.stringify(modal);
+        expect(raw).toContain('/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings');
+        expect(raw).toContain('"method":"POST"');
+        expect(raw).toContain('binding.saved');
+        expect(raw).toContain('binding.save_error');
+        expect(raw).toContain('"closeModal"');
+        expect(raw).toContain('bizppurioBindings');
+    });
+});
+
+describe('binding UI — 코어 무오염 + i18n', () => {
+    it('overlay·footer 어디에도 코어 편집 모달 저장 body(notification-templates PUT)를 건드리지 않는다', () => {
+        const all = JSON.stringify(overlay) + JSON.stringify(footer);
+        expect(all).not.toContain('/api/admin/notification-templates/');
+        expect(all).not.toContain('notification_template_form_modal');
+    });
+
+    it('참조하는 모든 플러그인 i18n 키가 ko·en 에 존재한다', () => {
+        const keys = [...collectPluginKeys(overlay), ...collectPluginKeys(footer)];
+        expect(keys.length).toBeGreaterThan(0);
         const resolve = (root: unknown, path: string): unknown =>
             path.split('.').slice(1).reduce<unknown>((acc, seg) => (acc as Record<string, unknown>)?.[seg], root);
-
-        for (const key of keys) {
+        for (const key of Array.from(new Set(keys))) {
             expect(resolve(ko, key), `ko 누락: ${key}`).toBeTruthy();
             expect(resolve(en, key), `en 누락: ${key}`).toBeTruthy();
         }

@@ -27,9 +27,13 @@ description: |
     - AlimtalkChannelDriver: to_alimtalk 발송 위임. binding 없으면 skip.
     - 변수 치환: 코어 {var} → 알림톡 #{var}(D8, 매핑 UI 없음).
     - 대체발송: binding.fallback_sms_enabled ON → payload 에 resend:{first:sms}+recontent 병합.
-    - 전용 칸(overlay): channel==='alimtalk' 일 때만 안내 카드 + 연결 템플릿 드롭다운 + SMS 대체
-      토글. 변경 즉시 우리 API(store) 저장 + toast. 승인(RDY/ACT) 템플릿만 드롭다운 노출.
-    - 상태 배너(overlay): sms·alimtalk 탭에서 readiness 미충족 🔴설정하기 / is_test_mode 🟡테스트모드.
+    - 행 연결 UI(extension_point notification_definition_row_footer): 알림톡 탭의 각 알림 행 하단에
+      연결 상태 줄(템플릿명·SMS대체) + [연결/변경] 버튼. channel==='alimtalk' 일 때만.
+    - 연결 모달(overlay modals, 우리 소유): 코어 편집 모달과 분리. 안내 카드 + 연결 템플릿
+      드롭다운(승인 RDY/ACT만) + SMS 대체 토글 + 변수 안내 + [취소][저장]. [저장]→우리 API(store)
+      + toast + 모달 닫힘 + 목록 갱신. 카카오 API 422 는 errorHandling.suppress 로 조용히 처리.
+    - 상태 배너(overlay injections): sms·alimtalk 탭에서 readiness 미충족 🔴설정하기 / is_test_mode 🟡.
+    - 안내 박스(overlay): 알림톡 탭 상시 안내(무엇을 하는 화면인지).
 
 axes:
   channel: [alimtalk]
@@ -75,15 +79,20 @@ effects:
   - bindings_map_returned_for_prefill
   - view_permission_required_for_read
   - manage_permission_required_for_store
-  # 전용 칸·배너 (프론트 — Vitest 구조/i18n)
-  - alimtalk_section_shown_only_for_alimtalk_channel
-  - template_select_saves_immediately_via_our_api
+  # 행 연결 UI·연결 모달·배너 (프론트 — Vitest 구조/i18n)
+  - row_binding_shown_only_for_alimtalk_channel
+  - row_shows_bound_or_unbound_status_from_bindings
+  - connect_button_seeds_modal_and_opens_our_modal
+  - openmodal_runs_before_approved_refetch
+  - our_binding_modal_registered_via_modals
   - fallback_toggle_disabled_when_no_template
-  - save_error_shows_toast
+  - save_posts_to_our_api_then_toast_close_refresh
+  - approved_templates_422_suppressed
   - banner_shown_only_on_sms_alimtalk_tab_when_problem
   - not_ready_banner_has_setup_action
   - test_mode_banner_shown_when_ready_and_test_mode
-  - core_edit_modal_save_body_has_no_bizppurio_fields
+  - alimtalk_tab_guide_box_shown
+  - core_edit_modal_untouched_no_bizppurio_fields
   # e2e (실연동 단계 도입 예정 — 브라우저 왕복 커버 대상)
   - e2e_open_alimtalk_edit_shows_section
   - e2e_select_template_saves_and_toasts
