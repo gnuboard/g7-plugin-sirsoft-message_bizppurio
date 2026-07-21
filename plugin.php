@@ -5,6 +5,7 @@ namespace Plugins\Sirsoft\MessageBizppurio;
 use App\Enums\ExtensionOwnerType;
 use App\Extension\AbstractPlugin;
 use App\Extension\Helpers\ExtensionMenuSyncHelper;
+use App\Extension\HookListenerRegistrar;
 use App\Extension\ModuleManager;
 use Database\Seeders\NotificationDefinitionSeeder;
 use Illuminate\Support\Facades\Log;
@@ -50,11 +51,21 @@ class Plugin extends AbstractPlugin
      * 실패는 로그만 남기고 활성화 자체는 막지 않는다(발송·연동은 채널 등록만으로도 동작하며,
      * template 은 다음 정상 재시딩에도 수렴).
      *
+     * 리스너 선등록: PluginManager::activatePlugin() 은 DB status 를 active 로 바꾸기
+     * '전에' 이 activate() 를 호출한다. 그런데 registerPluginHookListeners() 의 active 가드는
+     * status=active 인 플러그인의 리스너만 등록하므로, 이 시점엔 SeedChannelTemplatesListener 가
+     * 아직 등록되지 않았다. 그대로 재시딩하면 시딩 필터에 우리 리스너가 편승하지 못해
+     * sms·alimtalk 채널 template 이 붙지 않는다(실서버 회귀). 따라서 재시딩 전에 이 리스너를
+     * 명시적으로 선등록한다. register() 는 동일 process 내 중복 등록을 막으므로 멱등하다.
+     *
      * @return bool 활성화 성공 여부
      */
     public function activate(): bool
     {
         try {
+            // 재시딩이 편승할 시딩 필터 리스너를 status=active 전환 이전에 명시적으로 등록한다.
+            HookListenerRegistrar::register(SeedChannelTemplatesListener::class, $this->getIdentifier());
+
             app(NotificationDefinitionSeeder::class)->run();
             app(ModuleManager::class)->resyncAllActiveDeclarativeArtifacts();
         } catch (\Throwable $e) {
