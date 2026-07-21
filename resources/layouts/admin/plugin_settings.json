@@ -46,7 +46,8 @@
             "auth_required": true,
             "params": {
                 "status": "{{_local.templateStatus ?? ''}}",
-                "keyword": "{{_local.templateKeyword ?? ''}}"
+                "keyword": "{{_local.templateKeyword ?? ''}}",
+                "page": "{{_local.templatePage ?? 1}}"
             },
             "onSuccess": {
                 "handler": "setState",
@@ -58,12 +59,13 @@
             }
         },
         {
-            "id": "alimtalk_categories",
+            "id": "templates_readiness",
             "type": "api",
-            "endpoint": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates/categories",
+            "endpoint": "/api/plugins/sirsoft-message_bizppurio/admin/templates-readiness",
             "method": "GET",
-            "auto_fetch": false,
-            "auth_required": true
+            "auto_fetch": true,
+            "auth_required": true,
+            "if": "{{(query.tab ?? 'connection') === 'templates'}}"
         }
     ],
     "slots": {
@@ -126,10 +128,6 @@
                                         "handler": "sequence",
                                         "actions": [
                                             {
-                                                "handler": "setState",
-                                                "params": { "target": "local", "templateView": "list" }
-                                            },
-                                            {
                                                 "handler": "navigate",
                                                 "params": { "path": "/admin/plugins/{{route.identifier}}/settings", "query": { "tab": "templates" }, "mergeQuery": true, "replace": true }
                                             },
@@ -155,40 +153,42 @@
                         "trackChanges": true,
                         "children": [
                             {
-                                "id": "info_panel",
-                        "type": "basic",
-                        "name": "Div",
-                        "props": {
-                            "className": "mt-6 alert-info"
-                        },
-                        "children": [
-                            {
+                                "id": "preparation_notice",
+                                "comment": "사용 전 준비 안내(통합 1박스) — 실제 비즈뿌리오 사전 준비 절차. 박스 제목 없이 채널 그룹 2개만(문자·카카오)로 위계 단순화. 문자(발신번호 1줄) → 카카오 알림톡(채널·발신프로필 / 템플릿 등록·승인 / 고객센터 API 키 요청 3줄) 순. 각 채널은 라벨(굵게) + 들여쓴 하위 불릿. gap-4 로 그룹 간격.",
                                 "type": "basic",
                                 "name": "Div",
-                                "props": { "className": "flex gap-3" },
+                                "props": { "className": "mt-6 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 p-4 flex flex-col gap-4" },
                                 "children": [
                                     {
-                                        "type": "basic",
-                                        "name": "Icon",
-                                        "props": {
-                                            "name": "circle-info",
-                                            "size": "md",
-                                            "className": "text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
-                                        }
+                                        "comment": "문자(SMS/LMS) — 라벨 + 발신번호 등록 1줄",
+                                        "type": "basic", "name": "Div",
+                                        "props": { "className": "space-y-1" },
+                                        "children": [
+                                            { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_label" },
+                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_sender" } ] }
+                                        ]
                                     },
                                     {
-                                        "type": "basic",
-                                        "name": "Div",
-                                        "props": { "className": "space-y-1 text-info-soft" },
+                                        "comment": "카카오 알림톡 — 라벨 + 채널/템플릿/API키 3줄",
+                                        "type": "basic", "name": "Div",
+                                        "props": { "className": "space-y-1" },
                                         "children": [
-                                            { "type": "basic", "name": "P", "text": "$t:sirsoft-message_bizppurio.settings.info.credentials" },
-                                            { "type": "basic", "name": "P", "text": "$t:sirsoft-message_bizppurio.settings.info.report" }
+                                            { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_label" },
+                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_channel" } ] },
+                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_template" } ] },
+                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_apikey" } ] }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic", "name": "A",
+                                        "props": { "href": "https://www.bizppurio.com", "target": "_blank", "rel": "noopener noreferrer", "className": "inline-flex items-center gap-1.5 pt-1 text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline" },
+                                        "children": [
+                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.console_link" },
+                                            { "type": "basic", "name": "Icon", "props": { "name": "up-right-from-square", "size": "xs" } }
                                         ]
                                     }
                                 ]
-                            }
-                        ]
-                    },
+                            },
                     {
                         "id": "validation_error",
                         "type": "basic",
@@ -930,9 +930,10 @@
                 "children": [
                     {
                         "id": "templates_list_error",
+                        "comment": "목록 조회 실패 배너 — 준비 완료(ready)일 때만 노출. 키 미설정(ready=false)이면 아래 readiness 안내 배너가 담당하므로, 같은 원인으로 두 배너가 동시에 뜨지 않게 ready 게이트를 둔다. 즉 '키는 넣었는데 다른 이유로 실패'한 경우에만 카카오가 준 실제 사유를 표시.",
                         "type": "basic",
                         "name": "Div",
-                        "if": "{{_local.templateListError}}",
+                        "if": "{{_local.templateListError && templates_readiness?.data?.ready}}",
                         "props": { "className": "mb-4 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950 p-4 flex gap-2 items-start" },
                         "children": [
                             {
@@ -964,7 +965,7 @@
                         "id": "templates_readiness",
                         "type": "basic",
                         "name": "Div",
-                        "if": "{{!(settings?.data?.settings?.api_key) || !(settings?.data?.settings?.sender_key)}}",
+                        "if": "{{templates_readiness?.data && !(templates_readiness?.data?.ready)}}",
                         "props": { "className": "mb-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4" },
                         "children": [
                             {
@@ -1000,14 +1001,14 @@
                                                             {
                                                                 "type": "basic",
                                                                 "name": "Span",
-                                                                "if": "{{!(settings?.data?.settings?.api_key)}}",
+                                                                "if": "{{!(templates_readiness?.data?.api_key_set)}}",
                                                                 "props": { "className": "inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100" },
                                                                 "text": "$t:sirsoft-message_bizppurio.templates.readiness.api_key_missing"
                                                             },
                                                             {
                                                                 "type": "basic",
                                                                 "name": "Span",
-                                                                "if": "{{!(settings?.data?.settings?.sender_key)}}",
+                                                                "if": "{{!(templates_readiness?.data?.sender_key_set)}}",
                                                                 "props": { "className": "inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100" },
                                                                 "text": "$t:sirsoft-message_bizppurio.templates.readiness.sender_key_missing"
                                                             }
@@ -1042,8 +1043,79 @@
                         "id": "templates_list_view",
                         "type": "basic",
                         "name": "Div",
-                        "if": "{{(_local.templateView ?? 'list') === 'list'}}",
                         "children": [
+                            {
+                                "id": "templates_list_notice",
+                                "comment": "조회 전용 안내 1박스(파랑). 상단: '상태 배지 읽는 법' 제목 + 배지명(의미색: 발송가능=초록/검수중=amber/미검수·반려=빨강) + 설명. 하단(구분선): 콘솔 위임 1줄 + 콘솔 링크. 제목/본문 sm.",
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "mb-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 p-4" },
+                                "children": [
+                                    {
+                                        "comment": "위 — 콘솔 위임 안내 1줄 + 콘솔 링크.",
+                                        "type": "basic", "name": "Div",
+                                        "props": { "className": "space-y-1" },
+                                        "children": [
+                                            {
+                                                "type": "basic", "name": "P", "props": { "className": "flex gap-2 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" },
+                                                "children": [
+                                                    { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" },
+                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.list_notice.console_desc" }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic", "name": "A",
+                                                "props": { "href": "https://www.bizppurio.com", "target": "_blank", "rel": "noopener noreferrer", "className": "inline-flex items-center gap-1.5 ml-4 text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline" },
+                                                "children": [
+                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.list_notice.console_link" },
+                                                    { "type": "basic", "name": "Icon", "props": { "name": "up-right-from-square", "size": "xs" } }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "comment": "구분선 아래 — 상태 배지 의미 3줄. 배지명은 표의 배지와 눈으로 매칭되도록 solid 의미색(다크에서도 뚜렷).",
+                                        "type": "basic", "name": "Div",
+                                        "props": { "className": "mt-3 pt-3 border-t border-blue-100 dark:border-blue-900 space-y-1.5" },
+                                        "children": [
+                                            { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1" }, "text": "$t:sirsoft-message_bizppurio.templates.status_guide.title" },
+                                            {
+                                                "type": "basic", "name": "P", "props": { "className": "flex gap-2 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" },
+                                                "children": [
+                                                    { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" },
+                                                    { "type": "basic", "name": "Span", "children": [
+                                                        { "type": "basic", "name": "Span", "props": { "className": "font-semibold text-green-700 dark:text-green-300" }, "text": "$t:sirsoft-message_bizppurio.templates.status_guide.sendable_label" },
+                                                        { "type": "basic", "name": "Span", "text": " — " },
+                                                        { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.status_guide.sendable" }
+                                                    ] }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic", "name": "P", "props": { "className": "flex gap-2 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" },
+                                                "children": [
+                                                    { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" },
+                                                    { "type": "basic", "name": "Span", "children": [
+                                                        { "type": "basic", "name": "Span", "props": { "className": "font-semibold text-amber-700 dark:text-amber-300" }, "text": "$t:sirsoft-message_bizppurio.templates.status_guide.inspecting_label" },
+                                                        { "type": "basic", "name": "Span", "text": " — " },
+                                                        { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.status_guide.inspecting" }
+                                                    ] }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic", "name": "P", "props": { "className": "flex gap-2 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" },
+                                                "children": [
+                                                    { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" },
+                                                    { "type": "basic", "name": "Span", "children": [
+                                                        { "type": "basic", "name": "Span", "props": { "className": "font-semibold text-red-700 dark:text-red-300" }, "text": "$t:sirsoft-message_bizppurio.templates.status_guide.pending_label" },
+                                                        { "type": "basic", "name": "Span", "text": " — " },
+                                                        { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.status_guide.pending" }
+                                                    ] }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
                             {
                                 "id": "templates_toolbar",
                                 "type": "basic",
@@ -1068,7 +1140,7 @@
                                                         "type": "change",
                                                         "handler": "sequence",
                                                         "actions": [
-                                                            { "handler": "setState", "params": { "target": "local", "templateStatus": "{{$event.target.value}}" } },
+                                                            { "handler": "setState", "params": { "target": "local", "templateStatus": "{{$event.target.value}}", "templatePage": 1 } },
                                                             { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
                                                         ]
                                                     }
@@ -1092,13 +1164,47 @@
                                                     "className": "input w-64"
                                                 },
                                                 "actions": [
-                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateKeyword": "{{$event.target.value}}" } }
+                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateKeyword": "{{$event.target.value}}" } },
+                                                    {
+                                                        "comment": "④ 엔터로 검색 실행 — 입력값을 상태에 반영 후 목록 refetch(검색 파라미터 반영)",
+                                                        "type": "keypress",
+                                                        "key": "Enter",
+                                                        "handler": "sequence",
+                                                        "actions": [
+                                                            { "handler": "setState", "params": { "target": "local", "templateKeyword": "{{$event.target.value}}", "templatePage": 1 } },
+                                                            { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
+                                                        ]
+                                                    }
                                                 ]
                                             },
                                             {
+                                                "comment": "④ 검색 버튼 — 엔터 대신 클릭으로도 검색 실행",
                                                 "type": "basic",
                                                 "name": "Button",
-                                                "props": { "type": "button", "className": "btn btn-secondary btn-sm" },
+                                                "props": { "type": "button", "className": "btn btn-secondary btn-sm flex-center gap-1.5" },
+                                                "actions": [
+                                                    { "type": "click", "handler": "sequence", "actions": [
+                                                        { "handler": "setState", "params": { "target": "local", "templatePage": 1 } },
+                                                        { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
+                                                    ] }
+                                                ],
+                                                "children": [
+                                                    { "type": "basic", "name": "Icon", "props": { "name": "magnifying-glass", "size": "sm" } },
+                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.list.search" }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "comment": "우측 액션 그룹 — 조회 전용(새로고침만). 템플릿 등록은 비즈뿌리오 콘솔로 위임.",
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "flex gap-2 items-center" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Button",
+                                                "props": { "type": "button", "className": "btn btn-secondary btn-sm flex-center gap-1.5" },
                                                 "actions": [
                                                     { "type": "click", "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
                                                 ],
@@ -1107,25 +1213,6 @@
                                                     { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.list.refresh" }
                                                 ]
                                             }
-                                        ]
-                                    },
-                                    {
-                                        "type": "basic",
-                                        "name": "Button",
-                                        "props": { "type": "button", "className": "btn btn-primary btn-sm flex-center gap-1.5" },
-                                        "actions": [
-                                            {
-                                                "type": "click",
-                                                "handler": "sequence",
-                                                "actions": [
-                                                    { "handler": "setState", "params": { "target": "local", "templateView": "form", "templateForm": { "templateEmphasizeType": "NONE", "templateName": "", "templateContent": "", "categoryCode": "" }, "editingCode": null, "templateErrors": null, "templateSaving": false, "templateCodeMode": "auto", "categoryGroup": "", "showVarRef": false, "showOptional": false } },
-                                                    { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_categories" } }
-                                                ]
-                                            }
-                                        ],
-                                        "children": [
-                                            { "type": "basic", "name": "Icon", "props": { "name": "plus", "size": "sm" } },
-                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.list.new" }
                                         ]
                                     }
                                 ]
@@ -1150,10 +1237,13 @@
                                                         "type": "basic",
                                                         "name": "Tr",
                                                         "children": [
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap w-16" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.no" },
                                                             { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.name" },
                                                             { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.code" },
                                                             { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.status" },
-                                                            { "type": "basic", "name": "Th", "props": { "className": "text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.actions" }
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap w-40" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.requested_at" },
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap w-40" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.processed_at" },
+                                                            { "type": "basic", "name": "Th", "props": { "className": "text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap w-16" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.actions" }
                                                         ]
                                                     }
                                                 ]
@@ -1164,14 +1254,16 @@
                                                 "if": "{{(alimtalk_templates?.data?.templates ?? []).length > 0}}",
                                                 "iteration": {
                                                     "source": "alimtalk_templates?.data?.templates ?? []",
-                                                    "item_var": "tpl"
+                                                    "item_var": "tpl",
+                                                    "index_var": "tplIndex"
                                                 },
                                                 "children": [
                                                     {
                                                         "type": "basic",
                                                         "name": "Tr",
-                                                        "props": { "className": "border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40" },
+                                                        "props": { "className": "border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700" },
                                                         "children": [
+                                                            { "type": "basic", "name": "Td", "props": { "className": "px-4 py-3 text-gray-500 dark:text-gray-400 tabular-nums" }, "text": "{{((alimtalk_templates?.data?.pagination?.current_page ?? 1) - 1) * (alimtalk_templates?.data?.pagination?.per_page ?? 20) + tplIndex + 1}}" },
                                                             { "type": "basic", "name": "Td", "props": { "className": "px-4 py-3 font-medium text-gray-900 dark:text-gray-100" }, "text": "{{tpl.templateName ?? ''}}" },
                                                             { "type": "basic", "name": "Td", "props": { "className": "px-4 py-3 font-mono text-xs text-gray-500 dark:text-gray-400" }, "text": "{{tpl.templateCode ?? ''}}" },
                                                             {
@@ -1183,26 +1275,50 @@
                                                                         "type": "basic",
                                                                         "name": "Span",
                                                                         "props": {
-                                                                            "className": "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{tpl.status_badge?.variant === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200' : tpl.status_badge?.variant === 'yellow' ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200' : tpl.status_badge?.variant === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200' : tpl.status_badge?.variant === 'purple' ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}}"
+                                                                            "className": "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium {{tpl.status_badge?.variant === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200' : tpl.status_badge?.variant === 'yellow' ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200' : tpl.status_badge?.variant === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200' : tpl.status_badge?.variant === 'purple' ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}}"
                                                                         },
-                                                                        "text": "{{$t(tpl.status_badge?.label_key ?? 'sirsoft-message_bizppurio.templates.status.unknown')}}"
+                                                                        "children": [
+                                                                            { "type": "basic", "name": "Span", "text": "{{$t(tpl.status_badge?.label_key ?? 'sirsoft-message_bizppurio.templates.status.unknown')}}" },
+                                                                            { "type": "basic", "name": "Span", "if": "{{tpl.service_status === 'RDY'}}", "props": { "className": "opacity-70" }, "text": "$t:sirsoft-message_bizppurio.templates.status_sub.rdy" }
+                                                                        ]
                                                                     }
                                                                 ]
                                                             },
+                                                            { "type": "basic", "name": "Td", "props": { "className": "px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" }, "text": "{{tpl.createdAt ?? '—'}}" },
+                                                            { "type": "basic", "name": "Td", "props": { "className": "px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" }, "text": "{{tpl.modifiedAt ?? '—'}}" },
                                                             {
                                                                 "type": "basic",
                                                                 "name": "Td",
-                                                                "props": { "className": "px-4 py-3 text-right" },
+                                                                "props": { "className": "px-4 py-3 w-20" },
                                                                 "children": [
                                                                     {
                                                                         "type": "basic",
-                                                                        "name": "Button",
-                                                                        "props": { "type": "button", "className": "btn btn-ghost btn-xs" },
-                                                                        "actions": [
-                                                                            { "type": "click", "handler": "apiCall", "auth_required": true, "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates/{{tpl.templateCode}}", "params": { "method": "GET" }, "onSuccess": [ { "handler": "setState", "params": { "target": "local", "templateDetail": "{{response.data.template}}" } }, { "handler": "openModal", "target": "alimtalk_template_detail_modal" } ] }
-                                                                        ],
+                                                                        "name": "Div",
+                                                                        "props": { "className": "flex items-center justify-center" },
                                                                         "children": [
-                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.actions.detail" }
+                                                                            {
+                                                                                "comment": "조회 전용 — [내용] 버튼 하나. 상세 조회 후 내용 모달 열기(관리 액션 없음).",
+                                                                                "type": "basic",
+                                                                                "name": "Button",
+                                                                                "props": { "type": "button", "className": "btn btn-secondary btn-xs flex-center gap-1" },
+                                                                                "actions": [
+                                                                                    {
+                                                                                        "type": "click",
+                                                                                        "handler": "apiCall",
+                                                                                        "auth_required": true,
+                                                                                        "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates/{{tpl.templateCode}}",
+                                                                                        "params": { "method": "GET" },
+                                                                                        "onSuccess": [
+                                                                                            { "handler": "setState", "params": { "target": "local", "templateDetail": "{{response.data.template}}" } },
+                                                                                            { "handler": "openModal", "target": "alimtalk_template_detail_modal" }
+                                                                                        ]
+                                                                                    }
+                                                                                ],
+                                                                                "children": [
+                                                                                    { "type": "basic", "name": "Icon", "props": { "name": "eye", "size": "sm" } },
+                                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.actions.detail" }
+                                                                                ]
+                                                                            }
                                                                         ]
                                                                     }
                                                                 ]
@@ -1223,7 +1339,7 @@
                                                             {
                                                                 "type": "basic",
                                                                 "name": "Td",
-                                                                "props": { "className": "px-4 py-12 text-center text-gray-400 dark:text-gray-500", "colSpan": 4 },
+                                                                "props": { "className": "px-4 py-12 text-center text-gray-400 dark:text-gray-500", "colSpan": 7 },
                                                                 "children": [
                                                                     { "type": "basic", "name": "P", "props": { "className": "font-medium" }, "text": "$t:sirsoft-message_bizppurio.templates.list.empty" },
                                                                     { "type": "basic", "name": "P", "props": { "className": "text-xs mt-1" }, "text": "$t:sirsoft-message_bizppurio.templates.list.empty_hint" }
@@ -1236,770 +1352,29 @@
                                         ]
                                     }
                                 ]
-                            }
-                        ]
-                    },
-                    {
-                        "id": "templates_form_view",
-                        "type": "basic",
-                        "name": "Div",
-                        "if": "{{_local.templateView === 'form'}}",
-                        "children": [
-                            {
-                                "type": "basic",
-                                "name": "Div",
-                                "props": { "className": "flex-between mb-4" },
-                                "children": [
-                                    {
-                                        "type": "basic",
-                                        "name": "H3",
-                                        "props": { "className": "section-heading-md text-gray-900 dark:text-gray-100" },
-                                        "text": "{{_local.editingCode ? $t('sirsoft-message_bizppurio.templates.form.title_edit') : $t('sirsoft-message_bizppurio.templates.form.title_new')}}"
-                                    },
-                                    {
-                                        "type": "basic",
-                                        "name": "Button",
-                                        "props": { "type": "button", "className": "btn btn-ghost btn-sm" },
-                                        "actions": [
-                                            { "type": "click", "handler": "setState", "params": { "target": "local", "templateView": "list" } }
-                                        ],
-                                        "children": [
-                                            { "type": "basic", "name": "Icon", "props": { "name": "arrow-left", "size": "sm" } },
-                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.back_to_list" }
-                                        ]
-                                    }
-                                ]
                             },
                             {
+                                "comment": "페이지네이션 — 항상 노출(총 1페이지여도 표시). 페이지 변경 시 _local.templatePage 갱신 후 목록 refetch.",
                                 "type": "basic",
                                 "name": "Div",
-                                "props": { "className": "grid grid-cols-1 lg:grid-cols-2 gap-6" },
+                                "props": { "className": "flex justify-center mt-4" },
                                 "children": [
                                     {
-                                        "id": "template_form_fields",
-                                        "type": "basic",
-                                        "name": "Div",
-                                        "props": { "className": "space-y-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6" },
-                                        "children": [
+                                        "type": "composite",
+                                        "name": "Pagination",
+                                        "props": {
+                                            "currentPage": "{{alimtalk_templates?.data?.pagination?.current_page ?? 1}}",
+                                            "totalPages": "{{alimtalk_templates?.data?.pagination?.total_page ?? 1}}"
+                                        },
+                                        "actions": [
                                             {
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "children": [
-                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.name" },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Input",
-                                                        "props": { "type": "text", "maxLength": 200, "className": "input", "value": "{{_local.templateForm?.templateName ?? ''}}" },
-                                                        "actions": [
-                                                            { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateName": "{{$event.target.value}}" } }
-                                                        ]
-                                                    },
-                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.name_hint" }
+                                                "event": "onPageChange",
+                                                "type": "action",
+                                                "handler": "sequence",
+                                                "actions": [
+                                                    { "handler": "setState", "params": { "target": "local", "templatePage": "{{$args[0]}}" } },
+                                                    { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
                                                 ]
-                                            },
-                                            {
-                                                "id": "template_code_field",
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "children": [
-                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.code" },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "props": { "className": "inline-flex gap-2 mt-1 mb-2" },
-                                                        "children": [
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": { "type": "button", "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateCodeMode ?? 'auto') === 'auto' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}" },
-                                                                "actions": [
-                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateCodeMode": "auto", "templateForm.templateCode": "" } }
-                                                                ],
-                                                                "children": [ { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.code_auto" } ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": { "type": "button", "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateCodeMode ?? 'auto') === 'manual' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}" },
-                                                                "actions": [
-                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateCodeMode": "manual" } }
-                                                                ],
-                                                                "children": [ { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.code_manual" } ]
-                                                            }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Input",
-                                                        "if": "{{_local.templateCodeMode === 'manual'}}",
-                                                        "props": { "type": "text", "maxLength": 30, "className": "input font-mono", "placeholder": "TW_1234", "value": "{{_local.templateForm?.templateCode ?? ''}}" },
-                                                        "actions": [
-                                                            { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateCode": "{{$event.target.value}}" } }
-                                                        ]
-                                                    },
-                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.code_hint" }
-                                                ]
-                                            },
-                                            {
-                                                "id": "template_category_field",
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "children": [
-                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.category" },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "props": { "className": "grid grid-cols-2 gap-2" },
-                                                        "children": [
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Select",
-                                                                "props": { "className": "input", "value": "{{_local.categoryGroup ?? ''}}" },
-                                                                "actions": [
-                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "categoryGroup": "{{$event.target.value}}", "templateForm.categoryCode": "" } }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Option", "props": { "value": "" }, "text": "$t:sirsoft-message_bizppurio.templates.form.category_group" },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Option",
-                                                                        "iteration": {
-                                                                            "source": "[...new Set((alimtalk_categories?.data?.categories ?? []).map(c => c.groupName))]",
-                                                                            "item_var": "grp"
-                                                                        },
-                                                                        "props": { "value": "{{grp}}" },
-                                                                        "text": "{{grp}}"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Select",
-                                                                "props": { "className": "input", "disabled": "{{!_local.categoryGroup}}", "value": "{{_local.templateForm?.categoryCode ?? ''}}" },
-                                                                "actions": [
-                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.categoryCode": "{{$event.target.value}}" } }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Option", "props": { "value": "" }, "text": "$t:sirsoft-message_bizppurio.templates.form.category_item" },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Option",
-                                                                        "iteration": {
-                                                                            "source": "(alimtalk_categories?.data?.categories ?? []).filter(c => c.groupName === _local.categoryGroup)",
-                                                                            "item_var": "cat"
-                                                                        },
-                                                                        "props": { "value": "{{cat.code}}" },
-                                                                        "text": "{{cat.name}}"
-                                                                    }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "children": [
-                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.emphasize_type" },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "props": { "className": "inline-flex gap-2 mt-1" },
-                                                        "children": [
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": {
-                                                                    "type": "button",
-                                                                    "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateForm?.templateEmphasizeType ?? 'NONE') === 'NONE' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}"
-                                                                },
-                                                                "actions": [
-                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateEmphasizeType": "NONE" } }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.type_none" }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": {
-                                                                    "type": "button",
-                                                                    "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateForm?.templateEmphasizeType ?? 'NONE') === 'IMAGE' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}"
-                                                                },
-                                                                "actions": [
-                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateEmphasizeType": "IMAGE" } }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.type_image" }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": {
-                                                                    "type": "button",
-                                                                    "className": "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap {{(_local.templateForm?.templateEmphasizeType ?? 'NONE') === 'TEXT' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}}"
-                                                                },
-                                                                "actions": [
-                                                                    { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateEmphasizeType": "TEXT" } }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.type_text" }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "id": "template_text_fields",
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "if": "{{_local.templateForm?.templateEmphasizeType === 'TEXT'}}",
-                                                "props": { "className": "space-y-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600" },
-                                                "children": [
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "children": [
-                                                            { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.title_field" },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Input",
-                                                                "props": { "type": "text", "maxLength": 23, "className": "input", "value": "{{_local.templateForm?.templateTitle ?? ''}}" },
-                                                                "actions": [
-                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateTitle": "{{$event.target.value}}" } }
-                                                                ]
-                                                            },
-                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.title_hint" }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "children": [
-                                                            { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.subtitle_field" },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Input",
-                                                                "props": { "type": "text", "maxLength": 18, "className": "input", "value": "{{_local.templateForm?.templateSubtitle ?? ''}}" },
-                                                                "actions": [
-                                                                    { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateSubtitle": "{{$event.target.value}}" } }
-                                                                ]
-                                                            },
-                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.subtitle_hint" }
-                                                        ]
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "id": "template_image_fields",
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "if": "{{_local.templateForm?.templateEmphasizeType === 'IMAGE'}}",
-                                                "props": { "className": "space-y-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600" },
-                                                "children": [
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "children": [
-                                                            { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.image_upload" },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Input",
-                                                                "props": { "type": "file", "accept": ".jpg,.jpeg,.png", "className": "block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 dark:file:bg-blue-900/40 file:text-blue-700 dark:file:text-blue-300 file:cursor-pointer" },
-                                                                "actions": [
-                                                                    { "type": "change", "handler": "sirsoft-message_bizppurio.uploadTemplateImage" }
-                                                                ]
-                                                            },
-                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.image_upload_hint" }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "P",
-                                                        "if": "{{_local.imageUploading}}",
-                                                        "props": { "className": "text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5" },
-                                                        "children": [
-                                                            { "type": "basic", "name": "Icon", "props": { "name": "spinner", "className": "spinner-sm" } },
-                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.image_uploading" }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "P",
-                                                        "if": "{{_local.imageUploadError}}",
-                                                        "props": { "className": "text-sm text-red-600 dark:text-red-400" },
-                                                        "text": "{{_local.imageUploadError}}"
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "if": "{{_local.templateForm?.templateImageUrl}}",
-                                                        "props": { "className": "flex items-center gap-3 p-2 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600" },
-                                                        "children": [
-                                                            { "type": "basic", "name": "Img", "props": { "src": "{{_local.templateForm?.templateImageUrl}}", "className": "w-16 h-16 object-cover rounded" } },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "min-w-0 flex-1" },
-                                                                "children": [
-                                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-700 dark:text-gray-200 truncate" }, "text": "{{_local.templateForm?.templateImageName ?? ''}}" },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Button",
-                                                                        "props": { "type": "button", "className": "text-xs text-red-600 dark:text-red-400 underline mt-0.5" },
-                                                                        "actions": [
-                                                                            { "type": "click", "handler": "setState", "params": { "target": "local", "templateForm.templateImageUrl": "", "templateForm.templateImageName": "" } }
-                                                                        ],
-                                                                        "children": [ { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.image_remove" } ]
-                                                                    }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    },
-                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.image_maker_notice" }
-                                                ]
-                                            },
-                                            {
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "children": [
-                                                    { "type": "basic", "name": "Label", "props": { "className": "form-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.content" },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Textarea",
-                                                        "props": {
-                                                            "rows": 14,
-                                                            "maxLength": 1300,
-                                                            "placeholder": "$t:sirsoft-message_bizppurio.templates.form.content_placeholder",
-                                                            "className": "textarea font-mono resize-y leading-relaxed",
-                                                            "value": "{{_local.templateForm?.templateContent ?? ''}}"
-                                                        },
-                                                        "actions": [
-                                                            { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateContent": "{{$event.target.value}}" } }
-                                                        ]
-                                                    },
-                                                    { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.content_hint" }
-                                                ]
-                                            },
-                                            {
-                                                "id": "template_variables",
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "props": { "className": "rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 space-y-2" },
-                                                "children": [
-                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm font-medium text-blue-900 dark:text-blue-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_title" },
-                                                    { "type": "basic", "name": "P", "props": { "className": "text-xs text-blue-800 dark:text-blue-300 leading-relaxed" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_help" },
-                                                    { "type": "basic", "name": "P", "props": { "className": "text-xs text-blue-700 dark:text-blue-300 mt-1" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_quick" },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "props": { "className": "flex gap-1.5 flex-wrap" },
-                                                        "iteration": {
-                                                            "source": "['name', 'app_name', 'order_number', 'site_url']",
-                                                            "item_var": "varName"
-                                                        },
-                                                        "children": [
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": { "type": "button", "className": "px-2 py-1 rounded bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs font-mono hover:bg-blue-100 dark:hover:bg-blue-900/50" },
-                                                                "actions": [
-                                                                    { "type": "click", "handler": "sirsoft-message_bizppurio.insertVariable", "params": { "variable": "{{varName}}", "target": "templateContent", "statePath": "templateForm.templateContent" } }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "text": "{{'#{' + varName + '}'}}" }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "P",
-                                                        "props": { "className": "text-xs font-medium text-blue-800 dark:text-blue-300 mt-2" },
-                                                        "text": "$t:sirsoft-message_bizppurio.templates.form.variables_ref_toggle"
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "props": { "className": "overflow-x-auto mt-1 rounded border border-blue-100 dark:border-blue-800 bg-white/60 dark:bg-gray-900/40" },
-                                                        "children": [
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Table",
-                                                                "props": { "className": "w-full text-xs" },
-                                                                "children": [
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Thead",
-                                                                        "children": [
-                                                                            {
-                                                                                "type": "basic",
-                                                                                "name": "Tr",
-                                                                                "children": [
-                                                                                    { "type": "basic", "name": "Th", "props": { "className": "text-left px-2 py-1 text-blue-900 dark:text-blue-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_ref_event" },
-                                                                                    { "type": "basic", "name": "Th", "props": { "className": "text-left px-2 py-1 text-blue-900 dark:text-blue-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.variables_ref_vars" }
-                                                                                ]
-                                                                            }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Tbody",
-                                                                        "iteration": {
-                                                                            "source": "[{event: $t('sirsoft-message_bizppurio.templates.varref.welcome'), vars: '#{name} #{app_name} #{action_url} #{site_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.reset_password'), vars: '#{name} #{app_name} #{action_url} #{expire_minutes} #{site_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.order_confirmed'), vars: '#{name} #{app_name} #{order_number} #{total_amount} #{order_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.order_shipped'), vars: '#{name} #{app_name} #{order_number} #{carrier_name} #{tracking_number} #{order_url}'}, {event: $t('sirsoft-message_bizppurio.templates.varref.new_comment'), vars: '#{name} #{app_name} #{board_name} #{post_title} #{comment_author} #{post_url}'}]",
-                                                                            "item_var": "vref"
-                                                                        },
-                                                                        "children": [
-                                                                            {
-                                                                                "type": "basic",
-                                                                                "name": "Tr",
-                                                                                "props": { "className": "border-t border-blue-100 dark:border-blue-800" },
-                                                                                "children": [
-                                                                                    { "type": "basic", "name": "Td", "props": { "className": "px-2 py-1 text-blue-800 dark:text-blue-300 whitespace-nowrap" }, "text": "{{vref.event}}" },
-                                                                                    { "type": "basic", "name": "Td", "props": { "className": "px-2 py-1 text-blue-700 dark:text-blue-300 font-mono" }, "text": "{{vref.vars}}" }
-                                                                                ]
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "id": "template_optional",
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "children": [
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Button",
-                                                        "props": { "type": "button", "className": "text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1" },
-                                                        "actions": [
-                                                            { "type": "click", "handler": "setState", "params": { "target": "local", "showOptional": "{{!_local.showOptional}}" } }
-                                                        ],
-                                                        "children": [
-                                                            { "type": "basic", "name": "Icon", "props": { "name": "{{_local.showOptional ? 'chevron-down' : 'chevron-right'}}", "size": "sm" } },
-                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.optional_toggle" }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "if": "{{_local.showOptional}}",
-                                                        "props": { "className": "mt-2 space-y-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600" },
-                                                        "children": [
-                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint mb-1" }, "text": "$t:sirsoft-message_bizppurio.templates.form.optional_help" },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
-                                                                "children": [
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Label",
-                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optExtra}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optExtra": "{{$event.target.checked}}", "templateForm.templateExtra": "" } } ] },
-                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.extra" }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Div",
-                                                                        "if": "{{_local.optExtra}}",
-                                                                        "props": { "className": "mt-1.5 pl-6" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Textarea", "props": { "rows": 2, "maxLength": 500, "className": "textarea resize-y", "value": "{{_local.templateForm?.templateExtra ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateExtra": "{{$event.target.value}}" } } ] },
-                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.extra_hint" }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
-                                                                "children": [
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Label",
-                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optPreview}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optPreview": "{{$event.target.checked}}", "templateForm.templatePreviewMessage": "" } } ] },
-                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.preview_message" }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Div",
-                                                                        "if": "{{_local.optPreview}}",
-                                                                        "props": { "className": "mt-1.5 pl-6" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "maxLength": 40, "className": "input", "value": "{{_local.templateForm?.templatePreviewMessage ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templatePreviewMessage": "{{$event.target.value}}" } } ] },
-                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.preview_message_hint" }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
-                                                                "children": [
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Label",
-                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optButton}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optButton": "{{$event.target.checked}}", "templateForm.buttons": [] } } ] },
-                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.button" }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Div",
-                                                                        "if": "{{_local.optButton}}",
-                                                                        "props": { "className": "mt-1.5 pl-6 grid grid-cols-1 sm:grid-cols-3 gap-2" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "maxLength": 20, "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_name", "value": "{{_local.templateForm?.buttons?.[0]?.name ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.buttons.0.name": "{{$event.target.value}}", "templateForm.buttons.0.linkType": "WL" } } ] },
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input sm:col-span-2", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_url", "value": "{{_local.templateForm?.buttons?.[0]?.linkMo ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.buttons.0.linkMo": "{{$event.target.value}}", "templateForm.buttons.0.linkType": "WL" } } ] },
-                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint sm:col-span-3" }, "text": "$t:sirsoft-message_bizppurio.templates.form.button_hint" }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
-                                                                "children": [
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Label",
-                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optQuick}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optQuick": "{{$event.target.checked}}", "templateForm.quickReplies": [] } } ] },
-                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.quick_reply" }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Div",
-                                                                        "if": "{{_local.optQuick}}",
-                                                                        "props": { "className": "mt-1.5 pl-6 grid grid-cols-1 sm:grid-cols-3 gap-2" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "maxLength": 20, "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_name", "value": "{{_local.templateForm?.quickReplies?.[0]?.name ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.quickReplies.0.name": "{{$event.target.value}}", "templateForm.quickReplies.0.linkType": "WL" } } ] },
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input sm:col-span-2", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.button_url", "value": "{{_local.templateForm?.quickReplies?.[0]?.linkMo ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.quickReplies.0.linkMo": "{{$event.target.value}}", "templateForm.quickReplies.0.linkType": "WL" } } ] },
-                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint sm:col-span-3" }, "text": "$t:sirsoft-message_bizppurio.templates.form.quick_reply_hint" }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "border-b border-gray-200 dark:border-gray-600 pb-2" },
-                                                                "children": [
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Label",
-                                                                        "props": { "className": "flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-200" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "checkbox", "checked": "{{!!_local.optLink}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "optLink": "{{$event.target.checked}}", "templateForm.templateRepresentLink": {} } } ] },
-                                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.represent_link" }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Div",
-                                                                        "if": "{{_local.optLink}}",
-                                                                        "props": { "className": "mt-1.5 pl-6 space-y-2" },
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.link_pc", "value": "{{_local.templateForm?.templateRepresentLink?.linkPc ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateRepresentLink.linkPc": "{{$event.target.value}}" } } ] },
-                                                                            { "type": "basic", "name": "Input", "props": { "type": "text", "className": "input", "placeholder": "$t:sirsoft-message_bizppurio.templates.form.link_mo", "value": "{{_local.templateForm?.templateRepresentLink?.linkMo ?? ''}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.templateRepresentLink.linkMo": "{{$event.target.value}}" } } ] }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Label",
-                                                                "props": { "className": "flex items-start gap-2 cursor-pointer pt-1" },
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Input", "props": { "type": "checkbox", "className": "mt-0.5", "checked": "{{!!_local.templateForm?.securityFlag}}" }, "actions": [ { "type": "change", "handler": "setState", "params": { "target": "local", "templateForm.securityFlag": "{{$event.target.checked}}" } } ] },
-                                                                    {
-                                                                        "type": "basic",
-                                                                        "name": "Div",
-                                                                        "children": [
-                                                                            { "type": "basic", "name": "Span", "props": { "className": "text-sm text-gray-700 dark:text-gray-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.security_flag" },
-                                                                            { "type": "basic", "name": "P", "props": { "className": "form-hint" }, "text": "$t:sirsoft-message_bizppurio.templates.form.security_flag_hint" }
-                                                                        ]
-                                                                    }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "if": "{{_local.templateErrors}}",
-                                                "props": { "className": "alert-danger" },
-                                                "children": [
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Ul",
-                                                        "props": { "className": "list-disc list-inside space-y-1" },
-                                                        "iteration": {
-                                                            "source": "Object.values(_local.templateErrors ?? {}).flatMap(m => Array.isArray(m) ? m : [m])",
-                                                            "item_var": "msg"
-                                                        },
-                                                        "children": [
-                                                            { "type": "basic", "name": "Li", "props": { "className": "text-error-soft text-sm" }, "text": "{{msg}}" }
-                                                        ]
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "props": { "className": "flex flex-col gap-2 pt-2 border-t border-gray-100 dark:border-gray-700" },
-                                                "children": [
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "props": { "className": "flex gap-2" },
-                                                        "children": [
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": { "type": "button", "disabled": "{{_local.templateSaving}}", "className": "btn btn-secondary flex-1" },
-                                                                "actions": [
-                                                                    {
-                                                                        "type": "click",
-                                                                        "handler": "sequence",
-                                                                        "actions": [
-                                                                            { "handler": "setState", "params": { "target": "local", "templateErrors": null, "templateSaving": true } },
-                                                                            {
-                                                                                "handler": "apiCall",
-                                                                                "auth_required": true,
-                                                                                "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates",
-                                                                                "params": { "method": "POST", "body": "{{_local.templateForm}}" },
-                                                                                "onSuccess": [
-                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false } },
-                                                                                    { "handler": "toast", "params": { "type": "success", "message": "$t:sirsoft-message_bizppurio.templates.toast.created" } },
-                                                                                    { "handler": "setState", "params": { "target": "local", "templateView": "list" } },
-                                                                                    { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
-                                                                                ],
-                                                                                "onError": [
-                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false, "templateErrors": "{{error.errors ?? { _general: error.message }}}" } },
-                                                                                    { "handler": "toast", "params": { "type": "error", "message": "$t:sirsoft-message_bizppurio.templates.toast.action_failed" } }
-                                                                                ]
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.save_register" }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Button",
-                                                                "props": { "type": "button", "disabled": "{{_local.templateSaving}}", "className": "btn btn-primary flex-1" },
-                                                                "actions": [
-                                                                    {
-                                                                        "type": "click",
-                                                                        "handler": "sequence",
-                                                                        "actions": [
-                                                                            { "handler": "setState", "params": { "target": "local", "templateErrors": null, "templateSaving": true } },
-                                                                            {
-                                                                                "handler": "apiCall",
-                                                                                "auth_required": true,
-                                                                                "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates",
-                                                                                "params": { "method": "POST", "body": "{{Object.assign({}, _local.templateForm, { requestInspection: true })}}" },
-                                                                                "onSuccess": [
-                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false } },
-                                                                                    { "handler": "toast", "params": { "type": "success", "message": "$t:sirsoft-message_bizppurio.templates.toast.created_requested" } },
-                                                                                    { "handler": "setState", "params": { "target": "local", "templateView": "list" } },
-                                                                                    { "handler": "refetchDataSource", "params": { "dataSourceId": "alimtalk_templates" } }
-                                                                                ],
-                                                                                "onError": [
-                                                                                    { "handler": "setState", "params": { "target": "local", "templateSaving": false, "templateErrors": "{{error.errors ?? { _general: error.message }}}" } },
-                                                                                    { "handler": "toast", "params": { "type": "error", "message": "$t:sirsoft-message_bizppurio.templates.toast.action_failed" } }
-                                                                                ]
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                ],
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.form.save_and_request" }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "basic",
-                                                        "name": "Div",
-                                                        "props": { "className": "rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 p-3 space-y-2 text-xs" },
-                                                        "children": [
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "flex gap-2" },
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "props": { "className": "font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_register" },
-                                                                    { "type": "basic", "name": "Span", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_register_hint" }
-                                                                ]
-                                                            },
-                                                            {
-                                                                "type": "basic",
-                                                                "name": "Div",
-                                                                "props": { "className": "flex gap-2" },
-                                                                "children": [
-                                                                    { "type": "basic", "name": "Span", "props": { "className": "font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_and_request" },
-                                                                    { "type": "basic", "name": "Span", "props": { "className": "text-gray-500 dark:text-gray-400" }, "text": "$t:sirsoft-message_bizppurio.templates.form.save_and_request_hint" }
-                                                                ]
-                                                            }
-                                                        ]
-                                                    }
-                                                ]
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        "id": "template_form_preview",
-                                        "type": "basic",
-                                        "name": "Div",
-                                        "props": { "className": "bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6" },
-                                        "children": [
-                                            { "type": "basic", "name": "P", "props": { "className": "text-label mb-3 text-gray-700 dark:text-gray-200" }, "text": "$t:sirsoft-message_bizppurio.templates.form.preview_title" },
-                                            {
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "if": "{{(_local.templateForm?.templateContent ?? '') !== ''}}",
-                                                "props": { "className": "bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600 p-4 whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100 leading-relaxed min-h-40" },
-                                                "text": "{{_local.templateForm?.templateContent ?? ''}}"
-                                            },
-                                            {
-                                                "type": "basic",
-                                                "name": "Div",
-                                                "if": "{{(_local.templateForm?.templateContent ?? '') === ''}}",
-                                                "props": { "className": "bg-white dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-400 dark:text-gray-500 min-h-40 flex items-center justify-center text-center" },
-                                                "text": "$t:sirsoft-message_bizppurio.templates.form.preview_empty"
-                                            },
-                                            {
-                                                "type": "basic",
-                                                "name": "P",
-                                                "props": { "className": "form-hint mt-3" },
-                                                "text": "$t:sirsoft-message_bizppurio.templates.form.type_item_list_notice"
                                             }
                                         ]
                                     }
@@ -2026,41 +1401,154 @@
                 {
                     "type": "basic",
                     "name": "Div",
-                    "props": { "className": "space-y-3" },
+                    "props": { "className": "space-y-3 text-gray-900 dark:text-gray-100" },
                     "children": [
                         {
+                            "comment": "A안 헤더 — 템플릿명 + 상태 배지(⑦) 한 줄. 배지는 RDY 세부(사용전)까지 표기.",
                             "type": "basic",
                             "name": "Div",
+                            "props": { "className": "flex items-start justify-between gap-3" },
                             "children": [
-                                { "type": "basic", "name": "P", "props": { "className": "text-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.name" },
-                                { "type": "basic", "name": "P", "props": { "className": "text-body" }, "text": "{{_local.templateDetail?.templateName ?? ''}}" }
+                                { "type": "basic", "name": "H3", "props": { "className": "text-base font-semibold text-gray-900 dark:text-gray-100 leading-snug" }, "text": "{{_local.templateDetail?.templateName ?? ''}}" },
+                                {
+                                    "type": "basic",
+                                    "name": "Span",
+                                    "props": {
+                                        "className": "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 {{_local.templateDetail?.status_badge?.variant === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200' : _local.templateDetail?.status_badge?.variant === 'yellow' ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200' : _local.templateDetail?.status_badge?.variant === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200' : _local.templateDetail?.status_badge?.variant === 'purple' ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}}"
+                                    },
+                                    "children": [
+                                        { "type": "basic", "name": "Span", "text": "{{$t(_local.templateDetail?.status_badge?.label_key ?? 'sirsoft-message_bizppurio.templates.status.unknown')}}" },
+                                        { "type": "basic", "name": "Span", "if": "{{_local.templateDetail?.service_status === 'RDY'}}", "props": { "className": "opacity-70" }, "text": "$t:sirsoft-message_bizppurio.templates.status_sub.rdy" }
+                                    ]
+                                }
                             ]
                         },
                         {
+                            "comment": "A안 메타 그리드 — 코드·카테고리·유형·등록요청일·처리일 압축 표시. 없는 값은 '—'.",
                             "type": "basic",
                             "name": "Div",
+                            "props": { "className": "grid grid-cols-2 gap-x-4 gap-y-2 pb-3 border-b border-gray-200 dark:border-gray-700" },
                             "children": [
-                                { "type": "basic", "name": "P", "props": { "className": "text-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.code" },
-                                { "type": "basic", "name": "P", "props": { "className": "font-mono text-sm text-body" }, "text": "{{_local.templateDetail?.templateCode ?? ''}}" }
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "children": [
+                                        { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.code" },
+                                        { "type": "basic", "name": "P", "props": { "className": "font-mono text-sm text-gray-700 dark:text-gray-200 break-all" }, "text": "{{_local.templateDetail?.templateCode ?? '—'}}" }
+                                    ]
+                                },
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "children": [
+                                        { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.category" },
+                                        { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-800 dark:text-gray-100" }, "text": "{{_local.templateDetail?.categoryName ?? _local.templateDetail?.categoryCode ?? '—'}}" }
+                                    ]
+                                },
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "children": [
+                                        { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.emphasize_type" },
+                                        { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-800 dark:text-gray-100" }, "text": "{{_local.templateDetail?.templateEmphasizeType === 'TEXT' ? $t('sirsoft-message_bizppurio.templates.detail.type_text') : _local.templateDetail?.templateEmphasizeType === 'IMAGE' ? $t('sirsoft-message_bizppurio.templates.detail.type_image') : $t('sirsoft-message_bizppurio.templates.detail.type_none')}}" }
+                                    ]
+                                },
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "children": [
+                                        { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.requested_at" },
+                                        { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-800 dark:text-gray-100" }, "text": "{{_local.templateDetail?.createdAt ?? '—'}}" }
+                                    ]
+                                },
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "children": [
+                                        { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" }, "text": "$t:sirsoft-message_bizppurio.templates.list.columns.processed_at" },
+                                        { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-800 dark:text-gray-100" }, "text": "{{_local.templateDetail?.modifiedAt ?? '—'}}" }
+                                    ]
+                                }
                             ]
                         },
                         {
-                            "type": "basic",
-                            "name": "Div",
+                            "comment": "강조표기형(TEXT)일 때만 — 강조문구/보조문구",
+                            "type": "basic", "name": "Div",
+                            "if": "{{_local.templateDetail?.templateEmphasizeType === 'TEXT'}}",
+                            "props": { "className": "grid grid-cols-2 gap-x-4" },
                             "children": [
-                                { "type": "basic", "name": "P", "props": { "className": "text-label" }, "text": "$t:sirsoft-message_bizppurio.templates.form.content" },
-                                { "type": "basic", "name": "Div", "props": { "className": "bg-gray-50 dark:bg-gray-900/40 rounded p-3 whitespace-pre-wrap text-sm text-body" }, "text": "{{_local.templateDetail?.templateContent ?? ''}}" }
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "children": [
+                                        { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.title_field" },
+                                        { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-800 dark:text-gray-100" }, "text": "{{_local.templateDetail?.templateTitle ?? '—'}}" }
+                                    ]
+                                },
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "children": [
+                                        { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.subtitle_field" },
+                                        { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-800 dark:text-gray-100" }, "text": "{{_local.templateDetail?.templateSubtitle ?? '—'}}" }
+                                    ]
+                                }
                             ]
                         },
                         {
+                            "comment": "A안 — 내용을 가장 크게 강조",
                             "type": "basic",
                             "name": "Div",
-                            "props": { "className": "flex justify-end pt-2" },
+                            "children": [
+                                { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.content" },
+                                { "type": "basic", "name": "Div", "props": { "className": "bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-3 whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-100 leading-relaxed" }, "text": "{{_local.templateDetail?.templateContent ?? ''}}" }
+                            ]
+                        },
+                        {
+                            "comment": "이미지형(IMAGE)일 때만 — 미리보기 이미지",
+                            "type": "basic", "name": "Div",
+                            "if": "{{_local.templateDetail?.templateEmphasizeType === 'IMAGE' && _local.templateDetail?.templateImageUrl}}",
+                            "children": [
+                                { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.image_upload" },
+                                { "type": "basic", "name": "Img", "props": { "src": "{{_local.templateDetail?.templateImageUrl}}", "className": "w-24 h-24 object-cover rounded border border-gray-200 dark:border-gray-700" } }
+                            ]
+                        },
+                        {
+                            "comment": "버튼 목록 — 있을 때만. 각 버튼 = 이름 + 링크타입 배지 + 링크 URL(있으면).",
+                            "type": "basic", "name": "Div",
+                            "if": "{{(_local.templateDetail?.buttons ?? []).length > 0}}",
+                            "children": [
+                                { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.buttons" },
+                                {
+                                    "type": "basic", "name": "Div",
+                                    "props": { "className": "space-y-1.5" },
+                                    "iteration": { "source": "_local.templateDetail?.buttons ?? []", "item_var": "btn" },
+                                    "children": [
+                                        {
+                                            "type": "basic", "name": "Div",
+                                            "props": { "className": "flex items-center gap-2 flex-wrap rounded border border-gray-200 dark:border-gray-700 px-2.5 py-1.5" },
+                                            "children": [
+                                                { "type": "basic", "name": "Span", "props": { "className": "text-sm font-medium text-gray-800 dark:text-gray-100" }, "text": "{{btn.name ?? ''}}" },
+                                                { "type": "basic", "name": "Span", "props": { "className": "inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 flex-shrink-0" }, "text": "{{$t('sirsoft-message_bizppurio.templates.link_type.' + (btn.linkType ?? 'WL'))}}" },
+                                                { "type": "basic", "name": "Span", "if": "{{btn.linkMo || btn.linkPc || btn.linkAnd || btn.linkIos}}", "props": { "className": "font-mono text-xs text-gray-500 dark:text-gray-400 break-all" }, "text": "{{btn.linkMo || btn.linkPc || btn.linkAnd || btn.linkIos}}" }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "comment": "부가정보 — 있을 때만",
+                            "type": "basic", "name": "Div",
+                            "if": "{{_local.templateDetail?.templateExtra}}",
+                            "children": [
+                                { "type": "basic", "name": "P", "props": { "className": "text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" }, "text": "$t:sirsoft-message_bizppurio.templates.detail.extra" },
+                                { "type": "basic", "name": "P", "props": { "className": "text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap" }, "text": "{{_local.templateDetail?.templateExtra}}" }
+                            ]
+                        },
+                        {
+                            "comment": "푸터 — 조회 전용. [닫기]만 노출(관리 액션 없음, 등록·상태변경은 비즈뿌리오 콘솔).",
+                            "type": "basic",
+                            "name": "Div",
+                            "props": { "className": "flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700" },
                             "children": [
                                 {
                                     "type": "basic",
                                     "name": "Button",
-                                    "props": { "type": "button", "className": "btn btn-secondary" },
+                                    "props": { "type": "button", "className": "btn btn-secondary flex-shrink-0" },
                                     "actions": [
                                         { "type": "click", "handler": "closeModal", "target": "alimtalk_template_detail_modal" }
                                     ],

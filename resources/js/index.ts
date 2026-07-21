@@ -1,8 +1,9 @@
 /**
  * sirsoft-message_bizppurio 플러그인 엔트리포인트.
  *
- * 플러그인 활성화 시 자동 로드되어 커스텀 핸들러(insertVariable)를 ActionDispatcher 에
+ * 플러그인 활성화 시 자동 로드되어 handlerMap 의 커스텀 핸들러를 ActionDispatcher 에
  * 등록한다. 핸들러명은 `sirsoft-message_bizppurio.{name}` 네임스페이스를 갖는다.
+ * (현재 등록 핸들러 없음 — 필요 시 handlers/index.ts 에 추가.)
  */
 
 import { handlerMap } from './handlers';

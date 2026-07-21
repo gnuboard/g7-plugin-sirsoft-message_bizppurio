@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnforceIdentityPolicy;
 use App\Http\Middleware\RefreshTokenExpiration;
+use App\Services\PluginSettingsService;
 use Illuminate\Support\Facades\Route;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\AlimtalkTemplateController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\DispatchResultController;
@@ -49,39 +50,44 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->g
     })->middleware('permission:admin,core.plugins.read')
         ->name('report.url');
 
+    // 알림톡 템플릿 화면 준비 상태(값 유무) 조회.
+    //
+    // 카카오 관리에 필요한 자격증명(api_key·sender_key)은 sensitive:true 라 코어 설정 조회
+    // 응답에서 제거된다(보안). 따라서 프론트가 설정 조회 값으로 "설정됨" 을 판정할 수 없어,
+    // 값 자체는 노출하지 않고 저장 여부(boolean)만 내려준다. 알림톡 탭 readiness 배너가 소비.
+    Route::get('/templates-readiness', function () {
+        $settings = app(PluginSettingsService::class)
+            ->get('sirsoft-message_bizppurio') ?? [];
+
+        $filled = static fn (string $key): bool => trim((string) ($settings[$key] ?? '')) !== '';
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'api_key_set' => $filled('api_key'),
+                'sender_key_set' => $filled('sender_key'),
+                'ready' => $filled('api_key') && $filled('sender_key'),
+            ],
+        ]);
+    })->middleware('permission:admin,sirsoft-message_bizppurio.messaging.view')
+        ->name('templates.readiness');
+
     /*
     |----------------------------------------------------------------------
-    | 알림톡 템플릿 관리 (Phase 5) — 카카오 관리 API(kapi) 실시간 위임
+    | 알림톡 템플릿 조회 (Phase 5) — 카카오 관리 API(kapi) 실시간 위임
     |----------------------------------------------------------------------
     |
-    | 조회(list/detail/categories/profiles) = messaging.view
-    | 변경(store/update/destroy/검수/상태변경) = messaging.manage
-    | 템플릿은 DB 저장 없이 매 요청 실시간 조회. 설정 페이지 알림톡 템플릿 탭이 소비.
+    | 조회 전용(list/detail/categories/profiles) = messaging.view.
+    | 템플릿 등록·수정·삭제·검수·상태변경은 비즈뿌리오 콘솔로 위임한다(이 화면은 목록·상태·
+    | 내용 조회 + 알림 연결만 담당). 템플릿은 DB 저장 없이 매 요청 실시간 조회하며, 설정
+    | 페이지 알림톡 템플릿 탭이 소비한다.
     */
     Route::prefix('alimtalk-templates')->name('alimtalk-templates.')->group(function () {
-        // 조회 (view)
         Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.view')->group(function () {
             Route::get('/', [AlimtalkTemplateController::class, 'index'])->name('index');
             Route::get('/categories', [AlimtalkTemplateController::class, 'categories'])->name('categories');
             Route::get('/profiles', [AlimtalkTemplateController::class, 'profiles'])->name('profiles');
             Route::get('/{templateCode}', [AlimtalkTemplateController::class, 'show'])->name('show');
-        });
-
-        // 변경 (manage)
-        Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.manage')->group(function () {
-            Route::post('/', [AlimtalkTemplateController::class, 'store'])->name('store');
-            // 이미지형 템플릿 이미지 업로드 (정적 경로 — {templateCode} 보다 먼저 선언)
-            Route::post('/image', [AlimtalkTemplateController::class, 'uploadImage'])->name('image');
-            Route::put('/{templateCode}', [AlimtalkTemplateController::class, 'update'])->name('update');
-            Route::delete('/{templateCode}', [AlimtalkTemplateController::class, 'destroy'])->name('destroy');
-
-            // 검수·상태 변경
-            Route::post('/{templateCode}/request', [AlimtalkTemplateController::class, 'requestInspection'])->name('request');
-            Route::post('/{templateCode}/cancel-request', [AlimtalkTemplateController::class, 'cancelRequest'])->name('cancel-request');
-            Route::post('/{templateCode}/stop', [AlimtalkTemplateController::class, 'stop'])->name('stop');
-            Route::post('/{templateCode}/reuse', [AlimtalkTemplateController::class, 'reuse'])->name('reuse');
-            Route::post('/{templateCode}/cancel-approval', [AlimtalkTemplateController::class, 'cancelApproval'])->name('cancel-approval');
-            Route::post('/{templateCode}/release', [AlimtalkTemplateController::class, 'release'])->name('release');
         });
     });
 

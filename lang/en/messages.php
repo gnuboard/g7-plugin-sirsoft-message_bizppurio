@@ -76,55 +76,6 @@ return [
         'sender_key_missing' => 'Please set the alimtalk sender profile key first.',
     ],
 
-    // Alimtalk template management (Phase 5)
-    'template' => [
-        // Action result messages
-        'created' => 'The alimtalk template has been registered.',
-        'created_requested' => 'The alimtalk template has been registered and inspection requested.',
-        'updated' => 'The alimtalk template has been updated.',
-        'deleted' => 'The alimtalk template has been deleted.',
-        'requested' => 'Inspection has been requested.',
-        'request_canceled' => 'The inspection request has been canceled.',
-        'stopped' => 'The template has been stopped.',
-        'resumed' => 'The template has been resumed.',
-        'approval_canceled' => 'The approval has been canceled.',
-        'released' => 'The template has been released from dormancy.',
-
-        // Status badges (serviceStatus)
-        'status' => [
-            'sendable' => 'Sendable',
-            'inspecting' => 'Inspecting',
-            'rejected' => 'Rejected',
-            'uninspected' => 'Not inspected',
-            'stopped' => 'Stopped',
-            'blocked' => 'Blocked',
-            'dormant' => 'Dormant',
-            'unknown' => 'Unknown',
-        ],
-
-        // Template types (templateEmphasizeType)
-        'emphasize_type' => [
-            'none' => 'Basic',
-            'text' => 'Highlighted',
-            'image' => 'Image',
-            'item_list' => 'Item list',
-        ],
-
-        // Validation attribute labels (FormRequest attributes)
-        'fields' => [
-            'name' => 'Template name',
-            'content' => 'Template content',
-            'category' => 'Category',
-            'emphasize_type' => 'Template type',
-            'code' => 'Template code',
-            'title' => 'Highlight title',
-            'subtitle' => 'Highlight subtitle',
-            'image' => 'Image',
-            'image_name' => 'Image file name',
-            'image_url' => 'Image URL',
-        ],
-    ],
-
     // Notification-to-alimtalk template binding (NotificationBindingController responses)
     'binding' => [
         'saved' => 'Alimtalk binding saved.',

@@ -57,7 +57,7 @@ describe('plugin_settings.json — 자동바인딩', () => {
 
 describe('plugin_settings.json — 섹션', () => {
     it.each([
-        ['info_panel', '상단 안내 패널'],
+        ['preparation_notice', '사용 전 준비 안내(상단)'],
         ['section_api', 'API 연동'],
         ['section_sending', '발송 설정'],
         ['report_section', '리포트 수신 설정'],
@@ -155,10 +155,9 @@ describe('plugin_settings.json — 저장 버튼', () => {
     it('등록된 핸들러만 사용한다 (오탈자 핸들러 없음)', () => {
         const handlers = collectHandlers(layout);
         const allowed = [
-            'apiCall', 'setState', 'toast', 'navigate', 'sequence',
+            'apiCall', 'setState', 'toast', 'navigate', 'sequence', 'switch',
             'refetchDataSource', 'scrollIntoView', 'copyToClipboard',
             'openModal', 'closeModal', 'replaceUrl',
-            'sirsoft-message_bizppurio.insertVariable',
             'sirsoft-message_bizppurio.uploadTemplateImage',
         ];
         for (const h of handlers) {
@@ -234,13 +233,15 @@ describe('plugin_settings.json — 목록 조회 실패 표시', () => {
         expect(onError).toContain('kakao_message');
     });
 
-    it('목록 오류 배너가 templateListError 조건으로 존재한다', () => {
+    it('목록 오류 배너가 오류 존재 + 준비완료(ready) 조건으로 존재한다', () => {
         const banner = findById(layout, 'templates_list_error') as
             | Record<string, unknown>
             | undefined;
         expect(banner).toBeTruthy();
-        expect(banner?.if).toBe('{{_local.templateListError}}');
-        // 사유 본문을 그대로 렌더한다
+        // 키 미설정(ready=false)일 때는 readiness 안내 배너가 담당 → 빨간 오류 배너는 숨겨
+        // 두 배너가 동시에 뜨지 않게 한다. 즉 '키는 넣었는데 다른 이유로 실패'한 경우만 노출.
+        expect(banner?.if).toBe('{{_local.templateListError && templates_readiness?.data?.ready}}');
+        // 사유 본문(카카오 실제 사유)을 그대로 렌더한다
         expect(JSON.stringify(banner)).toContain('{{_local.templateListError}}');
     });
 });

@@ -1,241 +1,199 @@
 {
-    "name": "Bizppurio Messaging",
-    "description": "Bizppurio SMS/LMS and KakaoTalk alimtalk messaging plugin.",
-    "settings": {
-        "title": "Bizppurio Messaging Settings",
-        "description": "Manage Bizppurio integration credentials and sending options.",
-        "save": "Save",
-        "saving": "Saving...",
-        "save_success": "Settings saved.",
-        "save_failed": "Failed to save settings.",
-        "info": {
-            "credentials": "Enter the integration credentials (ID, password, API key) used for sending and Kakao management, along with the sender information. Verify every value before turning off test mode and switching to production.",
-            "report": "To automatically receive delivery results (success/failure) and record them in the history, register the report endpoint below with Bizppurio."
-        },
-        "test_mode": {
-            "label": "Test Mode",
-            "hint": "In test mode, messages are sent to the Bizppurio inspection (dev) domain. Turn it off to send through the production domain."
-        },
-        "live_mode_warning_title": "Sending in production",
-        "live_mode_warning_body": "Test mode is off, so real SMS and alimtalk messages are sent to actual customers and sending fees are charged. Keep test mode on while inspecting.",
-        "sections": {
-            "api": {
-                "title": "API Integration",
-                "description": "Credentials shared by the sending system and the Kakao management system."
-            },
-            "sending": {
-                "title": "Sending Options",
-                "description": "Sender information used for SMS and alimtalk delivery."
-            }
-        },
-        "fields": {
-            "bizppurio_id": {
-                "label": "Bizppurio ID",
-                "hint": "The Bizppurio account ID used for both sending and Kakao management."
-            },
-            "password": {
-                "label": "Password",
-                "hint": "The Bizppurio password used to issue the sending token."
-            },
-            "api_key": {
-                "label": "API Key",
-                "hint": "The API key is issued after you submit it together with your ID to Bizppurio customer support."
-            },
-            "sender_number": {
-                "label": "Sender Number",
-                "hint": "The sender phone number used for SMS and alimtalk delivery."
-            },
-            "sender_key": {
-                "label": "Alimtalk Sender Profile Key",
-                "hint": "The 40-character sender profile key used for alimtalk delivery and template lookup."
-            }
-        },
-        "report": {
-            "section_title": "Report Endpoint",
-            "hint": "Bizppurio can push each SMS/alimtalk delivery result (success/failure) to this address (URL PUSH). Register it with the Bizppurio business team (or the report settings in the console).",
-            "note": "Once registered, delivery results are recorded in the history so you can verify actual delivery. Before registration only the send request is confirmed; the final result (success/failure) is not updated.",
-            "copy": "Copy",
-            "copied": "Report endpoint copied to clipboard."
-        },
-        "tabs": {
-            "connection": "Settings",
-            "templates": "Alimtalk Templates"
-        }
+  "name": "Bizppurio Messaging",
+  "description": "Bizppurio SMS/LMS and KakaoTalk alimtalk messaging plugin.",
+  "settings": {
+    "title": "Bizppurio Messaging Settings",
+    "description": "Manage Bizppurio integration credentials and sending options.",
+    "save": "Save",
+    "saving": "Saving...",
+    "save_success": "Settings saved.",
+    "save_failed": "Failed to save settings.",
+    "test_mode": {
+      "label": "Test Mode",
+      "hint": "In test mode, messages are sent to the Bizppurio inspection (dev) domain. Turn it off to send through the production domain."
     },
-    "binding": {
-        "section_title": "KakaoTalk Alimtalk Binding",
-        "list_guide": "Link a KakaoTalk alimtalk template to each notification. Use [Connect] to assign an approved template — the alimtalk message is then sent automatically when that event occurs.",
-        "section_hint": "Only approved alimtalk templates can be linked. Saving applies to this notification immediately.",
-        "modal_title": "Alimtalk Binding · {name}",
-        "unbound": "Not connected",
-        "btn_connect": "Connect",
-        "btn_change": "Change",
-        "connected_template": "Connected Template",
-        "none": "Not connected",
-        "no_approved_templates": "No approved (sendable) alimtalk templates. Register and inspect a template first.",
-        "fallback_sms": "Fall back to SMS on failure",
-        "fallback_hint": "If the alimtalk message fails, this notification's body is sent as an SMS instead.",
-        "variables_hint": "Available variables (auto-substituted on send)",
-        "saved": "Alimtalk binding saved.",
-        "save_error": "Failed to save alimtalk binding."
+    "live_mode_warning_title": "Sending in production",
+    "live_mode_warning_body": "Test mode is off, so real SMS and alimtalk messages are sent to actual customers and sending fees are charged. Keep test mode on while inspecting.",
+    "sections": {
+      "api": {
+        "title": "API Integration",
+        "description": "Credentials shared by the sending system and the Kakao management system."
+      },
+      "sending": {
+        "title": "Sending Options",
+        "description": "Sender information used for SMS and alimtalk delivery."
+      }
     },
-    "banner": {
-        "not_ready": "Setup required for delivery is incomplete.",
-        "setup_action": "Set up",
-        "test_mode": "Test mode — messages are not actually sent."
+    "fields": {
+      "bizppurio_id": {
+        "label": "Bizppurio ID",
+        "hint": "The Bizppurio account ID used for both sending and Kakao management."
+      },
+      "password": {
+        "label": "Password",
+        "hint": "The Bizppurio password used to issue the sending token."
+      },
+      "api_key": {
+        "label": "API Key",
+        "hint": "The API key is issued after you submit it together with your ID to Bizppurio customer support."
+      },
+      "sender_number": {
+        "label": "Sender Number",
+        "hint": "The sender phone number used for SMS and alimtalk delivery."
+      },
+      "sender_key": {
+        "label": "Alimtalk Sender Profile Key",
+        "hint": "The 40-character sender profile key used for alimtalk delivery and template lookup."
+      }
     },
-    "dispatch_result": {
-        "column_header": "SMS/Alimtalk Result",
-        "low_balance": "Low balance",
-        "fallback": "SMS fallback {status}",
-        "detail_title": "SMS/Alimtalk delivery result",
-        "channel_label": "Channel: {channel}"
+    "report": {
+      "section_title": "Report Endpoint",
+      "hint": "Bizppurio can push each SMS/alimtalk delivery result (success/failure) to this address (URL PUSH). Register it with the Bizppurio business team (or the report settings in the console).",
+      "note": "Once registered, delivery results are recorded in the history so you can verify actual delivery. Before registration only the send request is confirmed; the final result (success/failure) is not updated.",
+      "copy": "Copy",
+      "copied": "Report endpoint copied to clipboard."
     },
-    "editor": {
-        "data_source": {
-            "dispatch_results": "Bizppurio dispatch results"
-        }
+    "tabs": {
+      "connection": "Settings",
+      "templates": "Alimtalk Templates"
     },
-    "templates": {
-        "title": "Alimtalk Templates",
-        "description": "Register, inspect, and manage KakaoTalk alimtalk templates. Only approved templates can be used for notification bindings.",
-        "readiness": {
-            "title": "The following settings are required to use alimtalk templates",
-            "go_settings": "Go to settings",
-            "missing_label": "Missing",
-            "api_key_missing": "Kakao management API key",
-            "sender_key_missing": "Alimtalk sender profile key",
-            "note": "Enter the items above on the Settings tab to browse and register templates. Actual delivery requires turning off test mode and using templates approved by Kakao."
-        },
-        "list_error": {
-            "title": "Failed to load the template list"
-        },
-        "list": {
-            "new": "New Template",
-            "refresh": "Refresh",
-            "search_placeholder": "Search by name (2-50 chars)",
-            "filter_all": "All statuses",
-            "empty": "No alimtalk templates registered.",
-            "empty_hint": "Register an alimtalk template with the [New Template] button.",
-            "load_failed": "Failed to load templates. Check the sender profile key and API key.",
-            "columns": {
-                "name": "Name",
-                "code": "Code",
-                "status": "Status",
-                "actions": "Actions"
-            }
-        },
-        "status": {
-            "sendable": "Sendable",
-            "inspecting": "Inspecting",
-            "rejected": "Rejected",
-            "uninspected": "Not inspected",
-            "stopped": "Stopped",
-            "blocked": "Blocked",
-            "dormant": "Dormant",
-            "unknown": "Unknown"
-        },
-        "actions": {
-            "edit": "Edit",
-            "delete": "Delete",
-            "request": "Request",
-            "cancel_request": "Cancel request",
-            "stop": "Stop",
-            "reuse": "Resume",
-            "cancel_approval": "Cancel approval",
-            "release": "Release",
-            "detail": "Detail"
-        },
-        "form": {
-            "title_new": "Register Alimtalk Template",
-            "title_edit": "Edit Alimtalk Template",
-            "back_to_list": "Back to list",
-            "sender_key": "Sender profile key",
-            "code": "Template code",
-            "code_auto": "Auto-generate",
-            "code_manual": "Enter manually",
-            "code_hint": "Letters, digits, underscore(_), hyphen(-), max 30 chars",
-            "name": "Template name",
-            "name_hint": "Management name (not part of content), max 200 chars",
-            "category": "Category",
-            "category_group": "Group",
-            "category_item": "Item",
-            "emphasize_type": "Template type",
-            "type_none": "Basic",
-            "type_image": "Image",
-            "type_text": "Highlighted",
-            "type_item_list_notice": "Advanced templates such as item-list should be registered on the Bizppurio website. Templates registered there are also available for listing and bindings.",
-            "goto_bizppurio": "Bizppurio website",
-            "image_name": "Image file name",
-            "image_url": "Image URL",
-            "image_upload": "Attach image",
-            "image_upload_hint": "jpg/png / max 500KB / at least 500px wide (2:1 to 3:4 ratio)",
-            "image_uploading": "Uploading image...",
-            "image_remove": "Remove image",
-            "image_maker_notice": "The image maker (auto-generation tool) is provided in the Bizppurio console.",
-            "title_field": "Highlight title",
-            "title_hint": "Only content present in the body, max 23 chars (variables allowed)",
-            "subtitle_field": "Highlight subtitle",
-            "subtitle_hint": "Only content present in the body, max 18 chars (no variables)",
-            "content": "Template content",
-            "content_placeholder": "Enter the body. Insert variables with #{variable}.",
-            "content_hint": "Max 1300 chars",
-            "variables_title": "Insert variable",
-            "variables_help": "Insert #{variable} into the body; when you bind this template to a notification, it is replaced with the real value (member name, order number, etc.). Below are example variables per notification — insert the ones matching the notification you will bind.",
-            "variables_quick": "Common variables (click to insert at cursor)",
-            "variables_ref_toggle": "Variable reference by notification",
-            "variables_ref_event": "Notification",
-            "variables_ref_vars": "Provided variables",
-            "optional_title": "Optional fields",
-            "optional_toggle": "Expand optional fields (extra info, buttons, etc.)",
-            "optional_help": "Check only the items you need to reveal their inputs. Buttons and quick replies assume a single web link (WL).",
-            "button": "Button",
-            "button_name": "Button label",
-            "button_url": "Mobile link URL",
-            "button_hint": "A web-link button shown at the bottom of the message.",
-            "quick_reply": "Quick reply",
-            "quick_reply_hint": "Quick reply (web link) used on consult-talk channels.",
-            "represent_link": "Represent link",
-            "link_pc": "PC web link",
-            "link_mo": "Mobile web link",
-            "preview_message": "Preview message",
-            "preview_message_hint": "Summary shown in the chat list (max 40 chars).",
-            "extra": "Extra info",
-            "extra_hint": "Supplementary text outside the body such as channel-add or ad notices (registers the message type as extra-info type).",
-            "security_flag": "Secure template (OTP, etc.)",
-            "security_flag_hint": "Turn on for secure messages such as OTP. The message text is hidden on devices other than the sending device.",
-            "preview_title": "Preview",
-            "preview_empty": "Enter the body to see a preview here.",
-            "save_register": "Register",
-            "save_register_hint": "Registers as a draft only. To send, request inspection from the list and get Kakao approval.",
-            "save_and_request": "Register and request inspection",
-            "save_and_request_hint": "Registers and requests Kakao inspection at once. You cannot edit after requesting."
-        },
-        "detail": {
-            "title": "Template detail",
-            "close": "Close"
-        },
-        "confirm": {
-            "delete": "Delete this template?",
-            "request": "Request inspection? You cannot edit after requesting.",
-            "cancel_request": "Cancel the inspection request?",
-            "stop": "Stop this template? It cannot be used for delivery once stopped.",
-            "cancel_approval": "Cancel the approval? Re-inspection will be required."
-        },
-        "toast": {
-            "created": "The alimtalk template has been registered.",
-            "created_requested": "The alimtalk template has been registered and inspection requested.",
-            "updated": "The alimtalk template has been updated.",
-            "deleted": "The alimtalk template has been deleted.",
-            "action_success": "The request has been processed.",
-            "action_failed": "Failed to process the request."
-        },
-        "varref": {
-            "welcome": "Welcome (signup)",
-            "reset_password": "Password reset",
-            "order_confirmed": "Order confirmed",
-            "order_shipped": "Order shipped",
-            "new_comment": "New comment"
-        }
+    "preparation": {
+      "sms_label": "SMS/LMS",
+      "sms_sender": "Register your sender number.",
+      "kakao_label": "Kakao Alimtalk",
+      "kakao_channel": "Create a KakaoTalk business channel and register a sender profile.",
+      "kakao_template": "Register your Alimtalk templates and get them approved.",
+      "kakao_apikey": "Request an API key from Bizppurio support.",
+      "console_link": "Open Bizppurio console"
     }
+  },
+  "binding": {
+    "section_title": "KakaoTalk Alimtalk Binding",
+    "list_guide": "Link a KakaoTalk alimtalk template to each notification. Use [Connect] to assign an approved template — the alimtalk message is then sent automatically when that event occurs.",
+    "section_hint": "Only approved alimtalk templates can be linked. Saving applies to this notification immediately.",
+    "modal_title": "Alimtalk Binding · {name}",
+    "unbound": "Not connected",
+    "btn_connect": "Connect",
+    "btn_change": "Change",
+    "fallback_on": "SMS fallback ON",
+    "fallback_off": "SMS fallback OFF",
+    "connected_template": "Connected Template",
+    "none": "Not connected",
+    "no_approved_templates": "No approved (sendable) alimtalk templates. Register and inspect a template first.",
+    "fallback_sms": "Fall back to SMS on failure",
+    "fallback_hint": "If the alimtalk message fails, this notification's body is sent as an SMS instead.",
+    "variables_hint": "Available variables (auto-substituted on send)",
+    "saved": "Alimtalk binding saved.",
+    "save_error": "Failed to save alimtalk binding."
+  },
+  "banner": {
+    "not_ready": "Setup required for delivery is incomplete.",
+    "setup_action": "Set up",
+    "test_mode": "Test mode — messages are not actually sent."
+  },
+  "dispatch_result": {
+    "column_header": "SMS/Alimtalk Result",
+    "low_balance": "Low balance",
+    "fallback": "SMS fallback {status}",
+    "detail_title": "SMS/Alimtalk delivery result",
+    "channel_label": "Channel: {channel}"
+  },
+  "editor": {
+    "data_source": {
+      "dispatch_results": "Bizppurio dispatch results"
+    }
+  },
+  "templates": {
+    "title": "Alimtalk Templates",
+    "description": "Register, inspect, and manage KakaoTalk alimtalk templates. Only approved templates can be used for notification bindings.",
+    "readiness": {
+      "title": "The following settings are required to use alimtalk templates",
+      "go_settings": "Go to settings",
+      "missing_label": "Missing",
+      "api_key_missing": "Kakao management API key",
+      "sender_key_missing": "Alimtalk sender profile key",
+      "note": "Enter the items above on the Settings tab to browse and register templates. Actual delivery requires turning off test mode and using templates approved by Kakao."
+    },
+    "list_error": {
+      "title": "Failed to load the template list"
+    },
+    "list_notice": {
+      "console_desc": "Register, edit, and review templates in the Bizppurio console.",
+      "console_link": "Open Bizppurio console"
+    },
+    "list": {
+      "refresh": "Refresh",
+      "search": "Search",
+      "search_placeholder": "Search by name (2-50 chars)",
+      "filter_all": "All statuses",
+      "empty": "No alimtalk templates registered.",
+      "empty_hint": "Templates registered in the Bizppurio console appear here.",
+      "load_failed": "Failed to load templates. Check the sender profile key and API key.",
+      "columns": {
+        "no": "No.",
+        "name": "Name",
+        "code": "Code",
+        "status": "Status",
+        "requested_at": "Requested",
+        "processed_at": "Processed",
+        "actions": "Content"
+      }
+    },
+    "status": {
+      "sendable": "Sendable",
+      "inspecting": "Inspecting",
+      "rejected": "Rejected",
+      "uninspected": "Not inspected",
+      "stopped": "Stopped",
+      "blocked": "Blocked",
+      "dormant": "Dormant",
+      "unknown": "Unknown"
+    },
+    "status_sub": {
+      "rdy": "(unused)"
+    },
+    "status_guide": {
+      "title": "Status badges",
+      "sendable_label": "Sendable",
+      "sendable": "Approved. Only this status can be linked to notifications and sent.",
+      "inspecting_label": "Inspecting",
+      "inspecting": "Kakao review in progress (2-3 business days).",
+      "pending_label": "Uninspected / Rejected",
+      "pending": "Cannot be sent yet. Request review or edit in the console."
+    },
+    "link_type": {
+      "WL": "Web link",
+      "AL": "App link",
+      "DS": "Delivery tracking",
+      "BK": "Bot keyword",
+      "MD": "Message delivery",
+      "AC": "Add channel",
+      "BC": "Consultation talk",
+      "BT": "Bot transfer",
+      "TN": "Call",
+      "MP": "Map",
+      "P1": "Secure image send",
+      "P2": "Privacy consent",
+      "P3": "One-click pay"
+    },
+    "actions": {
+      "detail": "Detail"
+    },
+    "detail": {
+      "title": "Template detail",
+      "close": "Close",
+      "buttons": "Buttons",
+      "extra": "Additional info",
+      "category": "Category",
+      "code": "Template code",
+      "content": "Template content",
+      "emphasize_type": "Template type",
+      "image_upload": "Attach image",
+      "subtitle_field": "Highlight subtitle",
+      "title_field": "Highlight title",
+      "type_image": "Image",
+      "type_none": "Basic",
+      "type_text": "Highlighted"
+    }
+  }
 }

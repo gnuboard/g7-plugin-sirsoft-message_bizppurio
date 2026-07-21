@@ -28,14 +28,39 @@
               }
             },
             {
-              "comment": "연결됨: 템플릿명(또는 코드) · SMS 대체 표시 / 미연결: '미연결'",
+              "comment": "연결됨: 템플릿명(또는 코드)",
               "type": "basic",
               "name": "Span",
               "if": "{{bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_code}}",
               "props": {
                 "className": "text-sm text-gray-700 dark:text-gray-200 truncate"
               },
-              "text": "{{(bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_name || bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_code) + (bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.fallback_sms_enabled ? ' · SMS' : '')}}"
+              "text": "{{bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_name || bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_code}}"
+            },
+            {
+              "comment": "⑧ SMS 대체발송 배지 — 연결됨일 때만, 켜짐/꺼짐을 색으로 구분해 둘 다 표시(다크에서 묽지 않게 solid 색)",
+              "type": "basic",
+              "name": "Span",
+              "if": "{{bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_code && bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.fallback_sms_enabled}}",
+              "props": {
+                "className": "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200 flex-shrink-0"
+              },
+              "children": [
+                { "type": "basic", "name": "Icon", "props": { "name": "comment-sms", "size": "sm" } },
+                { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.binding.fallback_on" }
+              ]
+            },
+            {
+              "type": "basic",
+              "name": "Span",
+              "if": "{{bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_code && !(bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.fallback_sms_enabled)}}",
+              "props": {
+                "className": "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 flex-shrink-0"
+              },
+              "children": [
+                { "type": "basic", "name": "Icon", "props": { "name": "comment-sms", "size": "sm" } },
+                { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.binding.fallback_off" }
+              ]
             },
             {
               "type": "basic",
