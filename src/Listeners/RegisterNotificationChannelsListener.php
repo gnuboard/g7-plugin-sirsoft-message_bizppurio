@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Plugins\Sirsoft\MessageBizppurio\Listeners;
 
 use App\Contracts\Extension\HookListenerInterface;
+use App\Services\ModuleSettingsService;
 use App\Services\PluginSettingsService;
+use App\Services\SettingsService;
 
 /**
  * 비즈뿌리오 문자·알림톡 채널을 코어 알림 시스템에 등록하는 필터 리스너.
@@ -67,6 +69,11 @@ class RegisterNotificationChannelsListener implements HookListenerInterface
             ],
             'core.notification.channel_readiness' => [
                 'method' => 'checkReadiness',
+                'priority' => 20,
+                'type' => 'filter',
+            ],
+            'core.notification.channel_enabled' => [
+                'method' => 'gateChannelEnabled',
                 'priority' => 20,
                 'type' => 'filter',
             ],
@@ -142,6 +149,94 @@ class RegisterNotificationChannelsListener implements HookListenerInterface
             'alimtalk' => $this->checkAlimtalkReadiness(),
             default => $result,
         };
+    }
+
+    /**
+     * 우리 채널(sms/alimtalk)의 "미저장=비활성(OFF)" 정책을 적용합니다
+     * (core.notification.channel_enabled 필터).
+     *
+     * 코어의 기본 판정은 "채널 설정 엔트리가 없으면 활성(true)" 이다(하위호환). 하지만
+     * sms·alimtalk 은 플러그인이 나중에 주입한 채널이라, 관리자가 명시적으로 켜기 전에는
+     * 발송·기록하지 않아야 한다(opt-in). 게스트 발송 정책 isChannelGuestAllowed 의
+     * "확장 채널은 미선언=차단" 과 같은 방향이다.
+     *
+     * 따라서 우리 채널이면서 해당 확장의 notifications.channels 저장소에 엔트리가 없을 때만
+     * false 로 덮어쓴다. 엔트리가 저장되어 있으면(켜짐/꺼짐 모두) 코어가 이미 그 값을 반영해
+     * $enabled 로 넘겨주므로 그대로 통과시킨다. 우리 채널이 아니면 항상 원본을 통과시킨다.
+     *
+     * @param  bool  $enabled  코어가 계산한 활성 여부
+     * @param  string  $extensionType  확장 타입 (core/module/plugin)
+     * @param  string|null  $extensionIdentifier  확장 식별자
+     * @param  string  $channelId  채널 식별자
+     * @return bool 최종 활성 여부
+     */
+    public function gateChannelEnabled(
+        bool $enabled,
+        string $extensionType,
+        ?string $extensionIdentifier,
+        string $channelId
+    ): bool {
+        if (! in_array($channelId, self::CHANNEL_IDS, true)) {
+            return $enabled;
+        }
+
+        // 저장 엔트리가 있으면 코어 판정($enabled)을 존중, 없으면 미저장 → OFF
+        if ($this->hasSavedChannelEntry($extensionType, $extensionIdentifier, $channelId)) {
+            return $enabled;
+        }
+
+        return false;
+    }
+
+    /**
+     * 해당 확장의 notifications.channels 저장소에 특정 채널 엔트리가 존재하는지 확인합니다.
+     *
+     * 저장소는 확장 타입별로 분리됩니다:
+     *   - core   → SettingsService
+     *   - module → ModuleSettingsService
+     *   - plugin → PluginSettingsService
+     *
+     * 조회 실패(예외)나 미지원 타입은 "미저장"(false)으로 간주해 안전측(OFF)으로 처리한다.
+     *
+     * @param  string  $extensionType  확장 타입
+     * @param  string|null  $extensionIdentifier  확장 식별자
+     * @param  string  $channelId  채널 식별자
+     * @return bool 저장 엔트리 존재 여부
+     */
+    private function hasSavedChannelEntry(
+        string $extensionType,
+        ?string $extensionIdentifier,
+        string $channelId
+    ): bool {
+        try {
+            $channels = match ($extensionType) {
+                'core' => app(SettingsService::class)
+                    ->getSetting('notifications.channels', []),
+                'module' => empty($extensionIdentifier)
+                    ? []
+                    : app(ModuleSettingsService::class)
+                        ->get($extensionIdentifier, 'notifications.channels', []),
+                'plugin' => empty($extensionIdentifier)
+                    ? []
+                    : app(PluginSettingsService::class)
+                        ->get($extensionIdentifier, 'notifications.channels', []),
+                default => [],
+            };
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (! is_array($channels)) {
+            return false;
+        }
+
+        foreach ($channels as $entry) {
+            if (is_array($entry) && ($entry['id'] ?? null) === $channelId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

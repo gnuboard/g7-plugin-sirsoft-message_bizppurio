@@ -6,6 +6,7 @@ use App\Extension\HookManager;
 use App\Services\ChannelReadinessService;
 use App\Services\NotificationChannelService;
 use App\Services\PluginSettingsService;
+use App\Services\SettingsService;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
@@ -48,6 +49,26 @@ class ChannelRegistrationHookTest extends PluginTestCase
             fn ($result, $channelId) => $listener->checkReadiness($result, $channelId),
             20,
         );
+        HookManager::addFilter(
+            'core.notification.channel_enabled',
+            fn ($enabled, $extType, $extId, $channelId) => $listener->gateChannelEnabled($enabled, $extType, $extId, $channelId),
+            20,
+        );
+    }
+
+    /**
+     * 코어 SettingsService 의 notifications.channels 저장값을 지정합니다.
+     *
+     * @param  array<int, array<string, mixed>>  $channels
+     */
+    private function setCoreChannels(array $channels): void
+    {
+        $settings = \Mockery::mock(SettingsService::class);
+        $settings->shouldReceive('getSetting')
+            ->with('notifications.channels', [])
+            ->andReturn($channels);
+        $this->app->instance(SettingsService::class, $settings);
+        app(NotificationChannelService::class)->clearChannelEnabledCache();
     }
 
     public function test_코어_채널서비스가_sms_alimtalk을_노출한다(): void
@@ -93,5 +114,51 @@ class ChannelRegistrationHookTest extends PluginTestCase
         $result = app(ChannelReadinessService::class)->check('sms');
 
         $this->assertTrue($result['ready']);
+    }
+
+    public function test_channel_enabled_미저장_sms는_off로_덮인다(): void
+    {
+        $this->registerListener();
+        // mail/database 만 저장, sms/alimtalk 엔트리 없음(미저장)
+        $this->setCoreChannels([
+            ['id' => 'mail', 'is_active' => true],
+            ['id' => 'database', 'is_active' => true],
+        ]);
+
+        $service = app(NotificationChannelService::class);
+
+        // 우리 채널: 미저장 → OFF (opt-in)
+        $this->assertFalse($service->isChannelEnabledForExtension('core', 'core', 'sms'));
+        $service->clearChannelEnabledCache();
+        $this->assertFalse($service->isChannelEnabledForExtension('core', 'core', 'alimtalk'));
+        // 코어 기본 채널: 미저장이어도 ON 유지(하위호환)
+        $service->clearChannelEnabledCache();
+        $this->assertTrue($service->isChannelEnabledForExtension('core', 'core', 'mail'));
+    }
+
+    public function test_channel_enabled_저장된_on_sms는_on이다(): void
+    {
+        $this->registerListener();
+        $this->setCoreChannels([
+            ['id' => 'mail', 'is_active' => true],
+            ['id' => 'sms', 'is_active' => true],
+        ]);
+
+        $this->assertTrue(
+            app(NotificationChannelService::class)->isChannelEnabledForExtension('core', 'core', 'sms')
+        );
+    }
+
+    public function test_channel_enabled_저장된_off_sms는_off이다(): void
+    {
+        $this->registerListener();
+        $this->setCoreChannels([
+            ['id' => 'mail', 'is_active' => true],
+            ['id' => 'sms', 'is_active' => false],
+        ]);
+
+        $this->assertFalse(
+            app(NotificationChannelService::class)->isChannelEnabledForExtension('core', 'core', 'sms')
+        );
     }
 }

@@ -204,6 +204,7 @@ class RegisterNotificationChannelsListenerTest extends PluginTestCase
 
         $this->assertArrayHasKey('core.notification.filter_available_channels', $hooks);
         $this->assertArrayHasKey('core.notification.channel_readiness', $hooks);
+        $this->assertArrayHasKey('core.notification.channel_enabled', $hooks);
         $this->assertArrayHasKey('core.auth.notification.channels', $hooks);
         $this->assertArrayHasKey('sirsoft-ecommerce.notification.channels', $hooks);
         $this->assertArrayHasKey('sirsoft-board.notification.channels', $hooks);
@@ -212,5 +213,15 @@ class RegisterNotificationChannelsListenerTest extends PluginTestCase
         foreach ($hooks as $config) {
             $this->assertSame('filter', $config['type']);
         }
+    }
+
+    public function test_channel_enabled_우리채널이_아니면_원본을_통과시킨다(): void
+    {
+        $listener = $this->makeListener();
+
+        // mail/database 등 타 채널은 저장소 조회 없이 코어 판정($enabled)을 그대로 반환
+        $this->assertTrue($listener->gateChannelEnabled(true, 'core', 'core', 'mail'));
+        $this->assertFalse($listener->gateChannelEnabled(false, 'core', 'core', 'database'));
+        $this->assertTrue($listener->gateChannelEnabled(true, 'module', 'sirsoft-board', 'slack'));
     }
 }
