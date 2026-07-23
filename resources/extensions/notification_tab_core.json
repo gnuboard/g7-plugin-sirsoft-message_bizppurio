@@ -18,7 +18,7 @@
     },
     {
       "id": "bizppurioApprovedTemplates",
-      "comment": "연결 모달 드롭다운 옵션(카카오 관리 API 위임). auto_fetch:false — 자격증명 미설정 시 카카오 API 422 가 전 탭에서 발화하던 문제 차단(결정 C). 연결 모달 열 때만 조회. errorHandling.default:suppress — 자격증명 미설정 시 422(카카오 API 요청 실패)를 조용히 무시한다(fallback 빈 목록 사용, 안내는 배너·'승인 템플릿 없음' 문구가 담당). 이 토스트를 막지 않으면 모달 열 때마다 에러 토스트가 뜬다.",
+      "comment": "연결 모달 드롭다운 옵션(카카오 관리 API 위임). auto_fetch:false — 자격증명 미설정 시 카카오 API 422 가 전 탭에서 발화하던 문제 차단(결정 C). 연결 모달 열 때만 조회. errorHandling.default:suppress — 자격증명 미설정 시 422(카카오 API 요청 실패)를 조용히 무시한다(fallback 사용, 토스트 재도입 금지 — 모달 열 때마다 에러 토스트가 뜨던 회귀). 조회 실패와 '진짜 0건'을 화면에서 구분하기 위해 fallback.data.load_failed:true 마커를 싣는다 — 정상 응답에는 이 필드가 없으므로, 드롭다운이 비었을 때 load_failed 유무로 '불러오지 못함(자격증명 확인)' vs '승인 템플릿 없음'을 분기한다.",
       "type": "api",
       "endpoint": "/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings/approved-templates",
       "method": "GET",
@@ -31,7 +31,8 @@
       },
       "fallback": {
         "data": {
-          "templates": []
+          "templates": [],
+          "load_failed": true
         }
       }
     }
@@ -249,9 +250,20 @@
                   ]
                 },
                 {
+                  "comment": "드롭다운이 비었고 조회 실패(fallback 마커)일 때 — 키 오류 등을 '0건'과 구분해 설정 확인을 안내.",
                   "type": "basic",
                   "name": "P",
-                  "if": "{{(bizppurioApprovedTemplates?.data?.templates ?? []).length === 0}}",
+                  "if": "{{(bizppurioApprovedTemplates?.data?.templates ?? []).length === 0 && bizppurioApprovedTemplates?.data?.load_failed === true}}",
+                  "props": {
+                    "className": "text-xs text-red-600 dark:text-red-400 mt-1"
+                  },
+                  "text": "$t:sirsoft-message_bizppurio.binding.templates_load_failed"
+                },
+                {
+                  "comment": "드롭다운이 비었고 조회는 정상(load_failed 없음)일 때 — 실제 승인 템플릿 0건.",
+                  "type": "basic",
+                  "name": "P",
+                  "if": "{{(bizppurioApprovedTemplates?.data?.templates ?? []).length === 0 && !(bizppurioApprovedTemplates?.data?.load_failed)}}",
                   "props": {
                     "className": "text-xs text-amber-600 dark:text-amber-400 mt-1"
                   },

@@ -156,6 +156,41 @@ describe('binding UI — 연결 모달(우리 소유, 코어 편집 모달과 �
     });
 });
 
+describe('binding UI — 드롭다운 조회 실패 vs 0건 구분(결함 3)', () => {
+    const modal = findById(overlayRoot, 'modal_bizppurio_binding');
+
+    it('승인 템플릿 데이터소스 fallback 에 load_failed:true 마커가 있다', () => {
+        const ds = ((overlay as { data_sources?: Array<Record<string, unknown>> }).data_sources ?? [])
+            .find((d) => d.id === 'bizppurioApprovedTemplates');
+        const fallback = (ds?.fallback as { data?: Record<string, unknown> })?.data ?? {};
+        // 조회 실패 시 이 마커가 상태에 실려 '0건'과 구분된다. 정상 응답에는 이 필드가 없다.
+        expect(fallback.load_failed).toBe(true);
+        expect(Array.isArray(fallback.templates)).toBe(true);
+        expect((fallback.templates as unknown[]).length).toBe(0);
+    });
+
+    it('드롭다운이 비었을 때 조회 실패(load_failed)면 설정 확인 문구를 노출한다', () => {
+        const raw = JSON.stringify(modal);
+        // 조회 실패 분기: length===0 && load_failed===true → templates_load_failed
+        expect(raw).toContain('binding.templates_load_failed');
+        expect(raw).toContain('load_failed === true');
+    });
+
+    it('드롭다운이 비었을 때 조회 정상(0건)이면 승인 템플릿 없음 문구를 노출한다', () => {
+        const raw = JSON.stringify(modal);
+        // 0건 분기: length===0 && !load_failed → no_approved_templates
+        expect(raw).toContain('binding.no_approved_templates');
+        expect(raw).toContain('!(bizppurioApprovedTemplates?.data?.load_failed)');
+    });
+
+    it('두 문구는 상호배타 조건이라 동시에 뜨지 않는다(조회실패=빨강 / 0건=amber)', () => {
+        const raw = JSON.stringify(modal);
+        // 조회 실패 문구는 red, 0건 문구는 amber 로 시각 구분
+        expect(raw).toContain('text-red-600');
+        expect(raw).toContain('text-amber-600');
+    });
+});
+
 describe('binding UI — 코어 무오염 + i18n', () => {
     it('overlay·footer 어디에도 코어 편집 모달 저장 body(notification-templates PUT)를 건드리지 않는다', () => {
         const all = JSON.stringify(overlay) + JSON.stringify(footer);

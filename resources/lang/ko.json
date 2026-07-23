@@ -80,6 +80,7 @@
     "connected_template": "연결 템플릿",
     "none": "연결 안 함",
     "no_approved_templates": "발송 가능한(승인된) 알림톡 템플릿이 없습니다. 먼저 템플릿을 등록·검수하세요.",
+    "templates_load_failed": "템플릿 목록을 불러오지 못했습니다. 플러그인 설정(자격증명)을 확인하세요.",
     "fallback_sms": "실패 시 SMS로 대체발송",
     "fallback_hint": "알림톡 발송이 실패하면 이 알림의 본문 내용이 문자(SMS)로 대신 발송됩니다.",
     "variables_hint": "제공 변수 (발송 시 자동 치환)",

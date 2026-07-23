@@ -80,6 +80,7 @@
     "connected_template": "Connected Template",
     "none": "Not connected",
     "no_approved_templates": "No approved (sendable) alimtalk templates. Register and inspect a template first.",
+    "templates_load_failed": "Failed to load the template list. Check the plugin settings (credentials).",
     "fallback_sms": "Fall back to SMS on failure",
     "fallback_hint": "If the alimtalk message fails, this notification's body is sent as an SMS instead.",
     "variables_hint": "Available variables (auto-substituted on send)",
