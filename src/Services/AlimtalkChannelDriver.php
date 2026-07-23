@@ -25,21 +25,27 @@ use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificatio
  * `via()` 에서 'alimtalk' 채널을 선택하면 이 드라이버의 send() 가 호출된다. Phase 3 까지는
  * no-op 스텁이 등록돼 있었고(크래시 방지), 이 드라이버가 그 스텁을 실발송으로 교체한다.
  *
- * SmsChannelDriver 와 흐름은 같으나 핵심 차이는 "발송 대상 템플릿"의 출처다:
+ * SmsChannelDriver 와 흐름은 같으나 핵심 차이는 "발송 본문·요소의 출처"다:
  *  - SMS: 코어 알림 템플릿(sms 채널) 본문을 그대로 발송한다.
- *  - 알림톡: 코어 알림 템플릿(alimtalk 채널) 본문을 렌더한 뒤, 관리자가 알림톡 탭에서 연결한
- *    카카오 승인 템플릿(bizppurio_notification_bindings.template_code)으로 발송한다.
+ *  - 알림톡: 관리자가 알림톡 탭에서 연결한 카카오 승인 템플릿의 실제 내용(본문·버튼·요소)을
+ *    카카오 상세조회로 가져와 발송한다(B안). 비즈뿌리오 발송 API 는 완성본을 요구하므로
+ *    templatecode 만으로는 안 되고, 카카오에 등록된 templateContent·buttons·quickReplies·
+ *    title·header·item·itemHighlight·representLink 를 발송 형식으로 변환해 채운다.
  *    연결(binding)이 없으면 발송하지 않는다(알림톡은 임의 본문 발송 불가 — 승인 템플릿 필수).
  *
  * 처리 흐름:
  *  1. 알림 유형(type)으로 활성 binding 조회. 없으면 skip(연결 안 된 알림은 알림톡 미발송).
- *  2. 코어 alimtalk 템플릿 본문 렌더(변수 치환) → 알림톡 변수 형식({x} → #{x})으로 변환.
+ *  2. 카카오 승인 템플릿 내용 조회(KakaoTemplateContentResolver, 캐시). 실패 시 skip.
  *  3. 전화번호 해석(회원=mobile, 비회원=data 의 _recipient_phone — SmsChannelDriver 와 동일 계약).
- *  4. refkey 생성 → payload 조립(대체발송 ON 시 resend/recontent 병합) → 이력 pending →
- *     SendMessageJob 위임.
+ *  4. 카카오 내용 → 발송 형식 변환 + 변수(#{var}) 치환(AlimtalkPayloadMapper). 본문 비면 skip.
+ *  5. refkey 생성 → payload 조립(버튼·요소는 extra, 대체발송 ON 시 resend/recontent 병합) →
+ *     이력 pending → SendMessageJob 위임.
  *
- * 고아 template_code(연결한 카카오 템플릿이 삭제·차단됨)는 발송 자체는 수행하고, 비즈뿌리오
- * 결과코드(7106/7107/7206 등)로 실패 처리된다(webhook·Job 이 이력에 기록 — Phase 4).
+ * 카카오 조회 실패(고아 template_code·장애·rate limit)는 알림톡 발송을 skip 하고 로그만 남긴다.
+ * 이 단계에선 알림톡 발송 자체가 일어나지 않으므로 SMS 대체발송은 트리거되지 않는다 — SMS 대체는
+ * 알림톡 payload 에 resend 로 병합되어, 알림톡이 접수된 뒤 비즈뿌리오 측 발송 실패(수신 거부·미가입
+ * 등)에만 작동한다(fallback_sms_enabled ON 시). 발송된 알림톡의 개별 실패는 비즈뿌리오 결과코드로
+ * webhook·Job 이 이력에 기록한다(Phase 4).
  */
 class AlimtalkChannelDriver
 {
@@ -47,11 +53,13 @@ class AlimtalkChannelDriver
     public const RECIPIENT_PHONE_KEY = '_recipient_phone';
 
     /**
-     * @param  NotificationTemplateService  $templateService  alimtalk 채널 본문 템플릿 resolve
+     * @param  NotificationTemplateService  $templateService  SMS 대체발송 본문(코어 alimtalk 템플릿) resolve
      * @param  BizppurioNotificationBindingRepositoryInterface  $bindings  이벤트↔템플릿 연결 조회
      * @param  MessagePayloadBuilder  $payloadBuilder  발송 payload 조립
      * @param  BizppurioDispatchRepositoryInterface  $dispatches  발송 이력 영속화
      * @param  DispatchLinkContext  $linkContext  발송 사이클 refkey↔코어 로그 연결 컨텍스트(A-2)
+     * @param  KakaoTemplateContentResolver  $kakaoContent  카카오 승인 템플릿 내용 조회·캐시(B안)
+     * @param  AlimtalkPayloadMapper  $payloadMapper  카카오 내용 → 발송 형식 변환·치환(B안)
      */
     public function __construct(
         private readonly NotificationTemplateService $templateService,
@@ -59,6 +67,8 @@ class AlimtalkChannelDriver
         private readonly MessagePayloadBuilder $payloadBuilder,
         private readonly BizppurioDispatchRepositoryInterface $dispatches,
         private readonly DispatchLinkContext $linkContext,
+        private readonly KakaoTemplateContentResolver $kakaoContent,
+        private readonly AlimtalkPayloadMapper $payloadMapper,
     ) {}
 
     /**
@@ -86,10 +96,15 @@ class AlimtalkChannelDriver
             return;
         }
 
-        // 2. 코어 alimtalk 템플릿 본문 resolve (없으면 발송 안 함 — 기본 body 시드 전제)
-        $template = $this->templateService->resolve($type, DispatchChannel::Alimtalk->value);
-        if ($template === null || ! $template->is_active) {
-            Log::info('비즈뿌리오 알림톡 발송 skip — alimtalk 템플릿 없음', ['type' => $type]);
+        // 2. 카카오 승인 템플릿 내용(본문·버튼·요소) 조회 — 발송 API 는 완성본을 요구하므로,
+        //    templatecode 만으로는 안 되고 카카오에 등록된 실제 내용을 가져와 채운다(B안).
+        //    조회 실패(고아·장애·rate limit)면 알림톡 본문 소스가 없으므로 skip 한다.
+        $kakaoContent = $this->kakaoContent->resolve($binding->template_code);
+        if ($kakaoContent === null) {
+            Log::info('비즈뿌리오 알림톡 발송 skip — 카카오 템플릿 내용 조회 실패', [
+                'type' => $type,
+                'template_code' => $binding->template_code,
+            ]);
 
             return;
         }
@@ -102,22 +117,27 @@ class AlimtalkChannelDriver
             return;
         }
 
-        // 4. 본문 렌더 (변수 치환) → 알림톡 변수 형식으로 변환 ({x} → #{x})
-        $locale = BaseNotification::resolveNotifiableLocale($notifiable);
-        $rendered = $template->replaceVariables($notification->getData(), $locale);
-        $message = $this->toAlimtalkVariables((string) ($rendered['body'] ?? ''));
+        // 4. 카카오 내용 → 발송 형식 변환 + 변수(#{var}) 치환. 본문이 비면 발송 불가라 skip.
+        $mapped = $this->payloadMapper->map($kakaoContent, $notification->getData());
+        $message = (string) ($mapped['message'] ?? '');
         if (trim($message) === '') {
             Log::info('비즈뿌리오 알림톡 발송 skip — 본문 비어 있음', ['type' => $type]);
 
             return;
         }
 
-        // 5. refkey 생성 → payload 조립 (대체발송 ON 시 SMS resend 병합)
+        // 5. refkey 생성 → payload 조립 (버튼·바로연결·요소는 extra 로 전달, 대체발송 ON 시 SMS resend 병합)
         $refkey = $this->generateRefkey();
-        $payload = $this->payloadBuilder->buildAlimtalk($to, $binding->template_code, $message, $refkey);
+        $payload = $this->payloadBuilder->buildAlimtalk(
+            $to,
+            $binding->template_code,
+            $message,
+            $refkey,
+            (array) ($mapped['extra'] ?? []),
+        );
 
         if ($binding->fallback_sms_enabled) {
-            $payload = $this->withSmsFallback($payload, (string) ($rendered['body'] ?? ''));
+            $payload = $this->withSmsFallback($payload, $this->smsFallbackBody($type, $notifiable, $notification));
         }
 
         // 6. 발송 이력 pending 생성 → Job 위임. Job/webhook 이 refkey 로 조회해 상태 갱신.
@@ -142,34 +162,48 @@ class AlimtalkChannelDriver
     }
 
     /**
-     * 코어 알림 본문의 변수 형식({name})을 알림톡 변수 형식(#{name})으로 변환합니다 (D8).
+     * SMS 대체발송 본문을 코어 alimtalk 템플릿에서 렌더합니다 (B안).
      *
-     * 코어 알림 템플릿과 카카오 알림톡은 변수명 규칙이 동일하되 표기만 다르다. 변수명을 그대로
-     * 유지한 채 접두 `#` 만 붙여, 매핑 UI·컬럼 없이 자동 치환한다. 이미 `#{...}` 인 경우는
-     * 중복 변환하지 않는다.
+     * 알림톡 본문은 카카오 승인 템플릿에서 오지만, 실패 시 대체할 SMS 본문은 카카오와 무관하므로
+     * 코어 알림 템플릿(alimtalk 채널) 본문을 그대로 재사용한다. 코어 템플릿이 없거나 비활성이면
+     * 빈 문자열을 반환하고, withSmsFallback 이 빈 본문이면 대체를 병합하지 않는다(엣지 C2).
      *
-     * @param  string  $body  코어 본문 (예: "{name} 님 주문 {order_number}")
-     * @return string 알림톡 본문 (예: "#{name} 님 주문 #{order_number}")
+     * @param  string  $type  알림 유형
+     * @param  object  $notifiable  수신자
+     * @param  GenericNotification  $notification  발송 대상 알림
+     * @return string 치환 완료된 대체 SMS 본문 (없으면 빈 문자열)
      */
-    private function toAlimtalkVariables(string $body): string
+    private function smsFallbackBody(string $type, object $notifiable, GenericNotification $notification): string
     {
-        // 앞에 # 가 없는 {var} 만 #{var} 로 변환 (이미 #{var} 인 경우 보존).
-        return (string) preg_replace('/(?<!#)\{([^{}]+)\}/', '#{$1}', $body);
+        $template = $this->templateService->resolve($type, DispatchChannel::Alimtalk->value);
+        if ($template === null || ! $template->is_active) {
+            return '';
+        }
+
+        $locale = BaseNotification::resolveNotifiableLocale($notifiable);
+        $rendered = $template->replaceVariables($notification->getData(), $locale);
+
+        return (string) ($rendered['body'] ?? '');
     }
 
     /**
      * 알림톡 payload 에 SMS 대체발송(resend/recontent)을 병합합니다 (개별 대체발송, 계획서 §6-2).
      *
      * 알림톡 실패 시(수신 거부·미가입 등) 비즈뿌리오가 SMS 로 대체 발송한다. 대체 SMS 본문은
-     * 코어 알림 본문(원문 {var} 형식이 아니라 실제 치환 완료 텍스트)을 재사용한다. 부록 C-2 의
-     * `resend:{first:"sms"}` + `recontent:{sms:{message}}` 구조를 따른다.
+     * 코어 알림 본문(치환 완료 텍스트)을 재사용한다. 부록 C-2 의 `resend:{first:"sms"}` +
+     * `recontent:{sms:{message}}` 구조를 따른다. 대체 본문이 비어 있으면(코어 템플릿 부재)
+     * 빈 SMS 를 보내지 않도록 병합하지 않는다(엣지 C2).
      *
      * @param  array<string, mixed>  $payload  알림톡 발송 payload
      * @param  string  $renderedBody  치환 완료된 코어 본문(대체 SMS 내용)
-     * @return array<string, mixed> resend/recontent 가 병합된 payload
+     * @return array<string, mixed> resend/recontent 가 병합된 payload (빈 본문이면 원본 그대로)
      */
     private function withSmsFallback(array $payload, string $renderedBody): array
     {
+        if (trim($renderedBody) === '') {
+            return $payload;
+        }
+
         $payload['resend'] = ['first' => 'sms'];
         $payload['recontent'] = ['sms' => ['message' => $renderedBody]];
 

@@ -86,6 +86,22 @@ class SendMessageJobTest extends PluginTestCase
         }
     }
 
+    public function test_알림톡_일시오류_결과코드는_예외를_던져_재시도한다(): void
+    {
+        // 알림톡 일시오류(7306 카카오 시스템오류·7307 처리지연·7421 타임아웃·7437 요청실패)는
+        // 다시 보내면 성공할 수 있으므로 예외를 던져 큐가 재시도해야 한다.
+        foreach (['7306', '7307', '7421', '7437'] as $code) {
+            $job = new SendMessageJob($this->payload, 'ref1');
+
+            try {
+                $job->handle($this->makeClient(['code' => (int) $code, 'description' => 'temp']), $this->dispatches());
+                $this->fail("코드 {$code} 는 재시도(예외)여야 한다");
+            } catch (BizppurioApiException $e) {
+                $this->assertSame($code, $e->getResultCode(), "코드 {$code}");
+            }
+        }
+    }
+
     public function test_영구실패_결과코드는_예외없이_종료하고_이력을_failed로_갱신한다(): void
     {
         $dispatch = $this->seedPending('ref1');

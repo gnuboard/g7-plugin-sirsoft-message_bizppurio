@@ -1,5 +1,7 @@
 <?php
 
+// audit:allow job-generator-needs-scale-test 단건 발송 Job(대용량 데이터 생성/처리 아님) — 결과코드 재시도 판정 집합만 변경, 대량 회귀 무관
+
 declare(strict_types=1);
 
 namespace Plugins\Sirsoft\MessageBizppurio\Jobs;
@@ -37,8 +39,14 @@ class SendMessageJob implements ShouldQueue
     /** 최대 재시도 횟수 (429·일시오류 대상). sync 환경 1회 재시도 포함 */
     public int $tries = 2;
 
-    /** 재시도 대상 일시 오류 결과코드 (부록 C-3) */
-    private const RETRYABLE_CODES = ['5003', '5004', '5005', '9000', '3011', '3013'];
+    /**
+     * 재시도 대상 일시 오류 결과코드.
+     *
+     * 공통 일시오류(5003/5004/5005/9000/3011/3013) + 알림톡 일시오류(7306 카카오 시스템오류·
+     * 7307 처리지연·7421 타임아웃·7437 메시지 요청실패). 7305(성공 불확실)는 중복발송 위험으로 제외.
+     * ResultCodeResolver::RETRYABLE_CODES 와 동일 집합을 유지한다.
+     */
+    private const RETRYABLE_CODES = ['5003', '5004', '5005', '9000', '3011', '3013', '7306', '7307', '7421', '7437'];
 
     /** HTTP 429 재시도 시 sync 환경 최대 대기(초) */
     private const SYNC_RETRY_MAX_WAIT_SECONDS = 2;

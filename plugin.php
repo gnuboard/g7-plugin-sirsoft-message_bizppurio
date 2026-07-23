@@ -247,6 +247,16 @@ class Plugin extends AbstractPlugin
                 'sensitive' => true,
                 'required' => false,
             ],
+            'template_cache_minutes' => [
+                'type' => 'number',
+                'default' => 60,
+                'label' => ['ko' => '알림톡 내용 캐시 시간(분)', 'en' => 'Alimtalk content cache (minutes)'],
+                'hint' => [
+                    'ko' => '카카오 알림톡 템플릿 내용을 이 시간 동안 기억해 재사용합니다(기본 60분). 이 시간이 지나면 다음 발송 때 최신 내용을 다시 가져옵니다. 0으로 두면 매번 최신 내용을 가져옵니다 — 발송이 많으면 조회 제한에 걸릴 수 있어 권장하지 않습니다. 카카오에서 템플릿을 방금 수정했다면 아래 [캐시 초기화]로 즉시 반영할 수 있습니다.',
+                    'en' => 'Reuses Kakao alimtalk template content for this period (default 60 minutes). After it expires, the latest content is fetched on the next dispatch. Set to 0 to always fetch the latest — not recommended for high volume as it may hit rate limits. If you just edited a template in Kakao, use [Clear cache] below to apply it immediately.',
+                ],
+                'required' => false,
+            ],
         ];
     }
 
@@ -267,6 +277,7 @@ class Plugin extends AbstractPlugin
             'api_key' => '',
             'sender_number' => '',
             'sender_key' => '',
+            'template_cache_minutes' => 60,
         ];
     }
 

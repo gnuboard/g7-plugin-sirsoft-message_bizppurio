@@ -46,12 +46,24 @@ class ResultCodeResolverTest extends PluginTestCase
 
     /**
      * 일시오류 코드는 Retry.
+     *
+     * 공통(5003/5004/5005/9000/3011/3013)에 더해, 알림톡 일시오류(7306 카카오 시스템오류·
+     * 7307 처리지연·7421 타임아웃·7437 메시지 요청실패)도 재시도 대상이다. 7305(성공 불확실)는
+     * 이미 발송됐을 수 있어 중복발송 위험이 있으므로 재시도 대상에서 제외한다.
      */
     public function test_retryable_codes_categorized_as_retry(): void
     {
-        foreach (['5003', '5004', '5005', '9000', '3011', '3013'] as $code) {
+        foreach (['5003', '5004', '5005', '9000', '3011', '3013', '7306', '7307', '7421', '7437'] as $code) {
             $this->assertSame(ResultCategory::Retry, $this->resolver->categorize($code), "코드 {$code}");
         }
+    }
+
+    /**
+     * 7305(성공 불확실)는 중복발송 위험으로 재시도 대상이 아니다(영구실패로 분류).
+     */
+    public function test_success_uncertain_7305_is_not_retryable(): void
+    {
+        $this->assertNotSame(ResultCategory::Retry, $this->resolver->categorize('7305'));
     }
 
     /**

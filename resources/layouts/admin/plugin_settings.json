@@ -154,37 +154,58 @@
                         "children": [
                             {
                                 "id": "preparation_notice",
-                                "comment": "사용 전 준비 안내(통합 1박스) — 실제 비즈뿌리오 사전 준비 절차. 박스 제목 없이 채널 그룹 2개만(문자·카카오)로 위계 단순화. 문자(발신번호 1줄) → 카카오 알림톡(채널·발신프로필 / 템플릿 등록·승인 / 고객센터 API 키 요청 3줄) 순. 각 채널은 라벨(굵게) + 들여쓴 하위 불릿. gap-4 로 그룹 간격.",
+                                "comment": "사용 전 준비 안내(통합 1박스) — 알림톡 템플릿 탭 list_notice 와 동일 구조. 위: 총괄 안내 1줄 + 콘솔 열기 링크. 구분선(border-t). 아래: 문자·카카오 채널별 사전 준비 목록(라벨 굵게 + 들여쓴 하위 불릿).",
                                 "type": "basic",
                                 "name": "Div",
-                                "props": { "className": "mt-6 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 p-4 flex flex-col gap-4" },
+                                "props": { "className": "mt-6 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 p-4" },
                                 "children": [
                                     {
-                                        "comment": "문자(SMS/LMS) — 라벨 + 발신번호 등록 1줄",
+                                        "comment": "위 — 총괄 안내 1줄 + 콘솔 열기 링크",
                                         "type": "basic", "name": "Div",
                                         "props": { "className": "space-y-1" },
                                         "children": [
-                                            { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_label" },
-                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_sender" } ] }
+                                            {
+                                                "type": "basic", "name": "P", "props": { "className": "flex gap-2 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" },
+                                                "children": [
+                                                    { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" },
+                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.intro" }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic", "name": "A",
+                                                "props": { "href": "https://www.bizppurio.com", "target": "_blank", "rel": "noopener noreferrer", "className": "inline-flex items-center gap-1.5 ml-4 text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline" },
+                                                "children": [
+                                                    { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.console_link" },
+                                                    { "type": "basic", "name": "Icon", "props": { "name": "up-right-from-square", "size": "xs" } }
+                                                ]
+                                            }
                                         ]
                                     },
                                     {
-                                        "comment": "카카오 알림톡 — 라벨 + 채널/템플릿/API키 3줄",
+                                        "comment": "구분선 아래 — 문자·카카오 채널별 사전 준비 목록",
                                         "type": "basic", "name": "Div",
-                                        "props": { "className": "space-y-1" },
+                                        "props": { "className": "mt-3 pt-3 border-t border-blue-100 dark:border-blue-900 flex flex-col gap-4" },
                                         "children": [
-                                            { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_label" },
-                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_channel" } ] },
-                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_template" } ] },
-                                            { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_apikey" } ] }
-                                        ]
-                                    },
-                                    {
-                                        "type": "basic", "name": "A",
-                                        "props": { "href": "https://www.bizppurio.com", "target": "_blank", "rel": "noopener noreferrer", "className": "inline-flex items-center gap-1.5 pt-1 text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline" },
-                                        "children": [
-                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.console_link" },
-                                            { "type": "basic", "name": "Icon", "props": { "name": "up-right-from-square", "size": "xs" } }
+                                            {
+                                                "comment": "문자(SMS/LMS) — 라벨 + 발신번호 등록 1줄",
+                                                "type": "basic", "name": "Div",
+                                                "props": { "className": "space-y-1" },
+                                                "children": [
+                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_label" },
+                                                    { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_sender" } ] }
+                                                ]
+                                            },
+                                            {
+                                                "comment": "카카오 알림톡 — 라벨 + 채널/템플릿/API키 3줄",
+                                                "type": "basic", "name": "Div",
+                                                "props": { "className": "space-y-1" },
+                                                "children": [
+                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_label" },
+                                                    { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_channel" } ] },
+                                                    { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_template" } ] },
+                                                    { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_apikey" } ] }
+                                                ]
+                                            }
                                         ]
                                     }
                                 ]
@@ -804,6 +825,146 @@
                         ]
                     },
                     {
+                        "id": "cache_section",
+                        "comment": "알림톡 발송 내용 캐시 — 독립 카드. 캐시 시간(form 저장) + 캐시 초기화(즉시 API, 로컬 캐시만 비움).",
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                            "className": "mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "panel-header-row" },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "H3",
+                                        "props": { "className": "section-heading-md" },
+                                        "text": "$t:sirsoft-message_bizppurio.settings.cache.section_title"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "props": { "className": "form-hint mt-1" },
+                                        "text": "$t:sirsoft-message_bizppurio.settings.cache.section_description"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": { "className": "p-6 space-y-6" },
+                                "children": [
+                                    {
+                                        "comment": "캐시 시간(분) — 좌: 라벨+설명 / 우: 입력. 다른 설정 필드와 동일한 2단 grid.",
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "grid grid-cols-1 lg:grid-cols-12 gap-4 items-start" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "lg:col-span-4" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Label",
+                                                        "props": { "className": "form-label" },
+                                                        "text": "$t:sirsoft-message_bizppurio.settings.fields.template_cache_minutes.label"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": { "className": "form-hint" },
+                                                        "text": "$t:sirsoft-message_bizppurio.settings.fields.template_cache_minutes.hint"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "lg:col-span-8 flex lg:justify-end" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Input",
+                                                        "props": {
+                                                            "type": "number",
+                                                            "name": "template_cache_minutes",
+                                                            "min": "0",
+                                                            "autoComplete": "off",
+                                                            "className": "input w-32"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "comment": "캐시 초기화 — 좌: 안내문 / 우: 버튼. 즉시 로컬 캐시 비우기(kapi 호출 없음).",
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "grid grid-cols-1 lg:grid-cols-12 gap-4 items-start" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "lg:col-span-4" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Label",
+                                                        "props": { "className": "form-label" },
+                                                        "text": "$t:sirsoft-message_bizppurio.settings.fields.template_cache_minutes.clear_cache"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": { "className": "form-hint" },
+                                                        "text": "$t:sirsoft-message_bizppurio.settings.fields.template_cache_minutes.clear_cache_hint"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "lg:col-span-8 flex lg:justify-end" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Button",
+                                                        "props": { "type": "button", "className": "btn btn-secondary btn-sm flex-center gap-1.5" },
+                                                        "actions": [
+                                                            {
+                                                                "type": "click",
+                                                                "handler": "apiCall",
+                                                                "auth_required": true,
+                                                                "target": "/api/plugins/sirsoft-message_bizppurio/admin/alimtalk-templates/cache/clear",
+                                                                "params": { "method": "POST" },
+                                                                "onSuccess": [
+                                                                    { "handler": "toast", "params": { "type": "success", "message": "$t:sirsoft-message_bizppurio.settings.fields.template_cache_minutes.clear_cache_success" } }
+                                                                ],
+                                                                "onError": [
+                                                                    { "handler": "toast", "params": { "type": "error", "message": "$t:sirsoft-message_bizppurio.settings.fields.template_cache_minutes.clear_cache_failed" } }
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "children": [
+                                                            { "type": "basic", "name": "Icon", "props": { "name": "eraser", "size": "sm" } },
+                                                            { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.fields.template_cache_minutes.clear_cache" }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
                         "id": "footer_buttons",
                         "type": "basic",
                         "name": "Div",
@@ -1196,7 +1357,7 @@
                                         ]
                                     },
                                     {
-                                        "comment": "우측 액션 그룹 — 조회 전용(새로고침만). 템플릿 등록은 비즈뿌리오 콘솔로 위임.",
+                                        "comment": "우측 액션 그룹 — 조회 전용(새로고침만). 캐시 초기화·캐시 시간은 환경설정 탭으로 이관. 템플릿 등록은 비즈뿌리오 콘솔로 위임.",
                                         "type": "basic",
                                         "name": "Div",
                                         "props": { "className": "flex gap-2 items-center" },

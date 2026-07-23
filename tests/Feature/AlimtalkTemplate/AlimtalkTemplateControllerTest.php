@@ -9,6 +9,7 @@ use Mockery;
 use Mockery\MockInterface;
 use Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException;
 use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkTemplateService;
+use Plugins\Sirsoft\MessageBizppurio\Services\NotificationBindingService;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
 /**
@@ -188,6 +189,48 @@ class AlimtalkTemplateControllerTest extends PluginTestCase
         $response->assertStatus(422);
         $response->assertJsonPath('errors.result_code', '7204');
         $response->assertJsonPath('errors.kakao_message', '발신프로필을 찾을 수 없습니다.');
+    }
+
+    /**
+     * @scenario auth=manage,action=clear_cache
+     *
+     * @effects clear_cache_delegates_to_binding_service_and_returns_count
+     */
+    public function test_manage권한으로_발송내용_캐시를_초기화한다(): void
+    {
+        $bindings = Mockery::mock(NotificationBindingService::class);
+        $bindings->shouldReceive('clearTemplateContentCache')->once()->andReturn(3);
+        $this->app->instance(NotificationBindingService::class, $bindings);
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.manage']))
+            ->postJson(self::BASE.'/cache/clear');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.cleared', 3);
+    }
+
+    /**
+     * @scenario auth=view_only,action=clear_cache
+     *
+     * @effects clear_cache_requires_manage_permission_returns_403
+     */
+    public function test_캐시초기화는_manage권한이_없으면_403(): void
+    {
+        // 조회(view) 권한만으로는 캐시 초기화(쓰기)를 할 수 없다.
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.view']))
+            ->postJson(self::BASE.'/cache/clear');
+
+        $response->assertStatus(403);
+    }
+
+    /**
+     * @scenario auth=guest,action=clear_cache
+     *
+     * @effects clear_cache_requires_authentication_returns_401
+     */
+    public function test_캐시초기화는_비인증이면_401(): void
+    {
+        $this->postJson(self::BASE.'/cache/clear')->assertStatus(401);
     }
 
     protected function tearDown(): void

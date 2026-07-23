@@ -81,4 +81,9 @@ return [
         'saved' => '알림톡 연동을 저장했습니다.',
         'removed' => '알림톡 연동을 해제했습니다.',
     ],
+
+    // 발송용 템플릿 내용 캐시 (AlimtalkTemplateController::clearCache 응답)
+    'cache' => [
+        'cleared' => '알림톡 템플릿 내용 캐시를 초기화했습니다. 다음 발송부터 최신 내용이 반영됩니다.',
+    ],
 ];

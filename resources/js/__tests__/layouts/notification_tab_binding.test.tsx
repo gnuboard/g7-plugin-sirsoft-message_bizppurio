@@ -112,6 +112,15 @@ describe('binding UI — 행 연결(extension_point)', () => {
         expect(raw).toContain('modal_bizppurio_binding');
     });
 
+    it('연결된 카카오 템플릿이 소실(is_unavailable)이면 빨간 경고 배지를 표시한다(결함 2)', () => {
+        const raw = JSON.stringify(findById(footerRoot, 'bizppurio_row_binding'));
+        // 연결됨(template_code 있음) + is_unavailable === true 일 때만 경고
+        expect(raw).toContain('is_unavailable === true');
+        expect(raw).toContain('binding.unavailable');
+        // 소실 경고는 red 배지로 표시(연결됨 초록과 구분)
+        expect(raw).toContain('bg-red-100');
+    });
+
     it('모달 열기(openModal)가 승인 템플릿 조회(refetch)보다 먼저 실행된다(조회 실패가 모달 표시를 막지 않도록)', () => {
         const row = findById(footerRoot, 'bizppurio_row_binding');
         const raw = JSON.stringify(row);

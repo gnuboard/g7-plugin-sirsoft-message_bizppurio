@@ -5,6 +5,7 @@ namespace Plugins\Sirsoft\MessageBizppurio\Tests\Unit\Services;
 use Mockery;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioNotificationBindingRepository;
 use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkTemplateService;
+use Plugins\Sirsoft\MessageBizppurio\Services\KakaoTemplateContentResolver;
 use Plugins\Sirsoft\MessageBizppurio\Services\NotificationBindingService;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
@@ -30,12 +31,25 @@ class NotificationBindingServiceTest extends PluginTestCase
         return $service;
     }
 
-    private function makeService(array $templates = []): NotificationBindingService
+    private function makeService(array $templates = [], ?KakaoTemplateContentResolver $kakaoContent = null): NotificationBindingService
     {
         return new NotificationBindingService(
             new BizppurioNotificationBindingRepository,
             $this->fakeTemplateService($templates),
+            $kakaoContent ?? $this->fakeKakaoContent(),
         );
+    }
+
+    /**
+     * clearMany 호출 인자를 기록하는 KakaoTemplateContentResolver mock 을 만듭니다.
+     */
+    private function fakeKakaoContent(): KakaoTemplateContentResolver
+    {
+        $resolver = Mockery::mock(KakaoTemplateContentResolver::class);
+        $resolver->shouldReceive('clearMany')
+            ->andReturnUsing(fn (array $codes) => count(array_unique(array_filter($codes))));
+
+        return $resolver;
     }
 
     public function test_all은_알림톡_연동을_type_키_맵으로_반환한다(): void
@@ -58,6 +72,77 @@ class NotificationBindingServiceTest extends PluginTestCase
     public function test_all은_연동이_없으면_빈_맵을_반환한다(): void
     {
         $this->assertSame([], $this->makeService()->all());
+    }
+
+    public function test_all_withAvailability는_승인목록에_있는_연동을_사용가능으로_표시한다(): void
+    {
+        (new BizppurioNotificationBindingRepository)->upsert('order_confirmed', 'alimtalk', [
+            'template_code' => 'TW_LIVE',
+            'template_name' => '살아있음',
+            'is_active' => true,
+        ]);
+
+        // 승인 목록에 TW_LIVE 가 있음 → 사용 가능(is_unavailable=false)
+        $map = $this->makeService([
+            ['templateCode' => 'TW_LIVE', 'templateName' => '살아있음', 'serviceStatus' => 'ACT'],
+        ])->all(withAvailability: true);
+
+        $this->assertFalse($map['order_confirmed']['is_unavailable']);
+    }
+
+    public function test_all_withAvailability는_승인목록에_없는_연동을_사용불가로_표시한다(): void
+    {
+        (new BizppurioNotificationBindingRepository)->upsert('order_confirmed', 'alimtalk', [
+            'template_code' => 'TW_GONE',
+            'template_name' => '삭제됨',
+            'is_active' => true,
+        ]);
+
+        // 승인 목록에 TW_GONE 이 없음(삭제·차단·미승인) → 사용 불가(is_unavailable=true)
+        $map = $this->makeService([
+            ['templateCode' => 'TW_OTHER', 'templateName' => '다른템플릿', 'serviceStatus' => 'ACT'],
+        ])->all(withAvailability: true);
+
+        $this->assertTrue($map['order_confirmed']['is_unavailable']);
+    }
+
+    public function test_all_withAvailability는_카카오_조회_실패시_소실판정을_생략한다(): void
+    {
+        (new BizppurioNotificationBindingRepository)->upsert('order_confirmed', 'alimtalk', [
+            'template_code' => 'TW_1234',
+            'template_name' => '주문완료',
+            'is_active' => true,
+        ]);
+
+        // 카카오 승인 목록 조회가 실패(자격증명 미설정·장애)하면 판정을 건너뛴다 —
+        // 살아있는 연동이 일시 장애로 "사용 불가"로 오탐되지 않게(is_unavailable 필드 미부여).
+        $throwingTemplates = Mockery::mock(AlimtalkTemplateService::class);
+        $throwingTemplates->shouldReceive('list')
+            ->andThrow(new \Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException('자격증명 미설정'));
+
+        $service = new NotificationBindingService(
+            new BizppurioNotificationBindingRepository,
+            $throwingTemplates,
+            $this->fakeKakaoContent(),
+        );
+
+        $map = $service->all(withAvailability: true);
+
+        $this->assertArrayNotHasKey('is_unavailable', $map['order_confirmed'], '조회 실패 시 소실 판정을 생략해야 한다.');
+    }
+
+    public function test_all은_기본값에서_소실판정을_하지_않는다(): void
+    {
+        (new BizppurioNotificationBindingRepository)->upsert('order_confirmed', 'alimtalk', [
+            'template_code' => 'TW_1234',
+            'template_name' => '주문완료',
+            'is_active' => true,
+        ]);
+
+        // store(저장) 경로처럼 프리필만 필요하면 카카오 대조를 생략한다(is_unavailable 필드 없음).
+        $map = $this->makeService()->all();
+
+        $this->assertArrayNotHasKey('is_unavailable', $map['order_confirmed']);
     }
 
     public function test_승인_상태_템플릿만_연결_후보로_노출한다(): void
@@ -140,5 +225,35 @@ class NotificationBindingServiceTest extends PluginTestCase
             'notification_type' => 'welcome',
             'channel' => 'alimtalk',
         ]);
+    }
+
+    public function test_캐시초기화는_연결된_모든_template_code를_resolver에_넘긴다(): void
+    {
+        // 서로 다른 알림에 두 템플릿을 연결.
+        $repo = new BizppurioNotificationBindingRepository;
+        $repo->upsert('order_confirmed', 'alimtalk', ['template_code' => 'TW_1', 'template_name' => 'A', 'is_active' => true]);
+        $repo->upsert('welcome', 'alimtalk', ['template_code' => 'TW_2', 'template_name' => 'B', 'is_active' => true]);
+
+        // resolver 가 실제로 받은 코드 목록을 포착.
+        $received = null;
+        $resolver = Mockery::mock(KakaoTemplateContentResolver::class);
+        $resolver->shouldReceive('clearMany')
+            ->once()
+            ->andReturnUsing(function (array $codes) use (&$received) {
+                $received = $codes;
+
+                return count($codes);
+            });
+
+        $cleared = $this->makeService([], $resolver)->clearTemplateContentCache();
+
+        $this->assertSame(2, $cleared);
+        $this->assertContains('TW_1', $received);
+        $this->assertContains('TW_2', $received);
+    }
+
+    public function test_캐시초기화는_연동이_없으면_0을_반환한다(): void
+    {
+        $this->assertSame(0, $this->makeService()->clearTemplateContentCache());
     }
 }

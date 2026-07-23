@@ -44,6 +44,14 @@
       "sender_key": {
         "label": "알림톡 발신프로필 키",
         "hint": "알림톡 발송·템플릿 조회에 사용하는 발신프로필 키(40자)입니다."
+      },
+      "template_cache_minutes": {
+        "label": "알림톡 내용 캐시 시간(분)",
+        "hint": "카카오 템플릿 내용을 이 시간만큼 재사용합니다. 0 = 매번 최신(발송 많으면 비권장).",
+        "clear_cache": "캐시 초기화",
+        "clear_cache_hint": "카카오에서 템플릿을 수정했다면 눌러서 즉시 반영하세요.",
+        "clear_cache_success": "템플릿 내용 캐시를 초기화했습니다. 다음 발송부터 최신 내용이 반영됩니다.",
+        "clear_cache_failed": "캐시 초기화에 실패했습니다."
       }
     },
     "report": {
@@ -53,11 +61,16 @@
       "copy": "복사",
       "copied": "리포트 수신 주소가 클립보드에 복사되었습니다."
     },
+    "cache": {
+      "section_title": "알림톡 발송 내용 캐시",
+      "section_description": "알림톡은 발송할 때 카카오에 등록된 템플릿 내용(본문·버튼)을 그대로 보내야 합니다. 발송할 때마다 카카오에 내용을 요청하지 않도록, 한 번 가져온 내용을 일정 시간 재사용(캐시)합니다. 덕분에 발송이 많아도 카카오 조회 제한에 걸리지 않고 빠르게 발송됩니다."
+    },
     "tabs": {
       "connection": "환경설정",
       "templates": "알림톡 템플릿"
     },
     "preparation": {
+      "intro": "문자·카카오 알림톡을 발송하려면 먼저 비즈뿌리오 콘솔에서 아래 사전 준비를 완료해야 합니다.",
       "sms_label": "문자(SMS/LMS)",
       "sms_sender": "발신번호를 등록하세요.",
       "kakao_label": "카카오 알림톡",
@@ -73,6 +86,7 @@
     "section_hint": "승인된 알림톡 템플릿만 연결할 수 있습니다. 저장하면 이 알림에 즉시 반영됩니다.",
     "modal_title": "알림톡 연결 · {name}",
     "unbound": "미연결",
+    "unavailable": "사용 불가 — 재연결 필요",
     "btn_connect": "연결",
     "btn_change": "연결 변경",
     "fallback_on": "SMS 대체 ON",

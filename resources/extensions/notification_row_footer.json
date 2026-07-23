@@ -38,6 +38,19 @@
               "text": "{{bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_name || bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_code}}"
             },
             {
+              "comment": "소실 경고 — 연결됨이지만 연결한 카카오 템플릿이 삭제·차단·미승인되어 발송 불가(is_unavailable). 승인 목록 대조가 가능했고(=is_unavailable 필드 존재) true 일 때만 표시. 카카오 조회 실패 시 서비스가 필드를 부여하지 않아 배지도 뜨지 않는다(오탐 방지).",
+              "type": "basic",
+              "name": "Span",
+              "if": "{{bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.template_code && bizppurioBindings?.data?.bindings?.[extensionPointProps.definition?.type]?.is_unavailable === true}}",
+              "props": {
+                "className": "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-100 flex-shrink-0"
+              },
+              "children": [
+                { "type": "basic", "name": "Icon", "props": { "name": "fas fa-triangle-exclamation", "size": "sm" } },
+                { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.binding.unavailable" }
+              ]
+            },
+            {
               "comment": "⑧ SMS 대체발송 배지 — 연결됨일 때만, 켜짐/꺼짐을 색으로 구분해 둘 다 표시(다크에서 묽지 않게 solid 색)",
               "type": "basic",
               "name": "Span",

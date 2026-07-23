@@ -81,4 +81,9 @@ return [
         'saved' => 'Alimtalk binding saved.',
         'removed' => 'Alimtalk binding removed.',
     ],
+
+    // Dispatch template content cache (AlimtalkTemplateController::clearCache response)
+    'cache' => [
+        'cleared' => 'Alimtalk template content cache cleared. The latest content will apply from the next dispatch.',
+    ],
 ];

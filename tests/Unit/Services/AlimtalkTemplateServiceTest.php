@@ -100,6 +100,33 @@ class AlimtalkTemplateServiceTest extends PluginTestCase
         $this->assertSame('green', $detail['status_badge']['variant']);
     }
 
+    public function test_발신프로필은_data_success_배열을_반환한다(): void
+    {
+        // 규격(5.발신프로필관리): /v3/kakao/profile/use 응답 data 는 {success:[...], fail:[...]}
+        // 2단 봉투다. 실제 발신프로필 목록은 data.success 안에 있으므로 그 배열을 반환해야 한다.
+        Http::fake([
+            'kapi.ppurio.com/*' => Http::response([
+                'code' => '200',
+                'data' => [
+                    'success' => [
+                        ['senderKey' => 'SK_40', 'name' => '테스트채널', 'status' => 'A'],
+                    ],
+                    'fail' => [],
+                ],
+            ], 200),
+        ]);
+
+        $profiles = $this->service()->senderProfiles();
+
+        // success 배열이 그대로 반환되어야 한다(껍데기 {success,fail} 가 아님).
+        $this->assertCount(1, $profiles);
+        $this->assertSame('SK_40', $profiles[0]['senderKey']);
+        $this->assertSame('테스트채널', $profiles[0]['name']);
+        // 회귀 방지: data 통째 반환 시 노출되던 success/fail 키가 없어야 한다.
+        $this->assertArrayNotHasKey('success', $profiles);
+        $this->assertArrayNotHasKey('fail', $profiles);
+    }
+
     public function test_발신프로필_키_미설정시_예외(): void
     {
         $this->expectException(BizppurioApiException::class);

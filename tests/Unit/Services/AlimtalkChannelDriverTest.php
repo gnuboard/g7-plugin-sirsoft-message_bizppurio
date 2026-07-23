@@ -16,7 +16,9 @@ use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioNotificationBinding;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioDispatchRepository;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificationBindingRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkChannelDriver;
+use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkPayloadMapper;
 use Plugins\Sirsoft\MessageBizppurio\Services\DispatchLinkContext;
+use Plugins\Sirsoft\MessageBizppurio\Services\KakaoTemplateContentResolver;
 use Plugins\Sirsoft\MessageBizppurio\Services\MessagePayloadBuilder;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
@@ -74,17 +76,46 @@ class AlimtalkChannelDriverTest extends PluginTestCase
     }
 
     /**
+     * 카카오 상세조회 내용을 반환하는 KakaoTemplateContentResolver mock 을 만듭니다.
+     *
+     * @param  array<string, mixed>|null  $content  resolve 반환값 (null=조회 실패 → skip)
+     */
+    private function fakeKakaoContent(?array $content): KakaoTemplateContentResolver
+    {
+        $resolver = Mockery::mock(KakaoTemplateContentResolver::class);
+        $resolver->shouldReceive('resolve')->andReturn($content);
+
+        return $resolver;
+    }
+
+    /**
+     * 기본 카카오 상세(본문만 있는 단순 승인 템플릿).
+     *
+     * @return array<string, mixed>
+     */
+    private function kakaoContent(string $templateContent = '#{name}님 주문이 완료되었습니다.'): array
+    {
+        return ['templateCode' => 'TW_1234', 'templateContent' => $templateContent];
+    }
+
+    /**
      * 템플릿·binding·빌더를 조합한 driver 를 만듭니다.
+     *
+     * @param  array<string, mixed>|null  $kakao  카카오 상세조회 내용 (null=조회 실패)
      */
     private function makeDriver(
         ?NotificationTemplate $template,
         ?BizppurioNotificationBinding $binding,
         ?MessagePayloadBuilder $builder = null,
+        array|false|null $kakao = false,
     ): AlimtalkChannelDriver {
         $templateService = Mockery::mock(NotificationTemplateService::class);
         $templateService->shouldReceive('resolve')
             ->with(Mockery::any(), 'alimtalk')
             ->andReturn($template);
+
+        // $kakao 기본값 false = "기본 카카오 내용 제공"(대부분 테스트). null = 조회 실패.
+        $content = $kakao === false ? $this->kakaoContent() : $kakao;
 
         return new AlimtalkChannelDriver(
             $templateService,
@@ -92,6 +123,8 @@ class AlimtalkChannelDriverTest extends PluginTestCase
             $builder ?? $this->spyBuilder(),
             new BizppurioDispatchRepository,
             new DispatchLinkContext,
+            $this->fakeKakaoContent($content),
+            new AlimtalkPayloadMapper,
         );
     }
 
@@ -143,15 +176,28 @@ class AlimtalkChannelDriverTest extends PluginTestCase
         $this->assertDatabaseCount('bizppurio_dispatches', 0);
     }
 
-    public function test_alimtalk_템플릿이_없으면_발송하지_않는다(): void
+    public function test_카카오_템플릿_내용_조회_실패시_발송하지_않는다(): void
     {
         Bus::fake();
         $member = User::factory()->create(['mobile' => '010-1234-5678']);
 
-        // binding 은 있으나 코어 alimtalk 본문 템플릿이 없음 → skip
-        $this->makeDriver(null, $this->binding())->send($member, $this->notification());
+        // binding 은 있으나 카카오 상세조회 실패(고아·장애) → 알림톡 본문 소스 없음 → skip
+        $this->makeDriver($this->fakeTemplate(), $this->binding(), kakao: null)
+            ->send($member, $this->notification());
 
         Bus::assertNotDispatched(SendMessageJob::class);
+    }
+
+    public function test_코어_alimtalk_템플릿이_없어도_카카오_내용으로_발송한다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        // 알림톡 본문은 카카오에서 오므로, 코어 alimtalk 템플릿(SMS 대체용)이 없어도 발송돼야 한다.
+        // 대체발송 OFF 이면 코어 템플릿을 아예 조회하지 않는다.
+        $this->makeDriver(null, $this->binding(fallback: false))->send($member, $this->notification());
+
+        Bus::assertDispatched(SendMessageJob::class);
     }
 
     public function test_회원은_mobile로_연결된_템플릿코드로_발송한다(): void
@@ -183,42 +229,64 @@ class AlimtalkChannelDriverTest extends PluginTestCase
         $this->assertSame('01099990000', $builder->calls[0]['to']);
     }
 
-    public function test_본문_변수를_알림톡_형식으로_변환한다(): void
+    public function test_카카오_본문의_변수를_알림_data로_치환해_발송한다(): void
     {
         Bus::fake();
         $member = User::factory()->create(['mobile' => '01011112222']);
         $builder = $this->spyBuilder();
 
+        // 알림톡 본문은 카카오 승인 템플릿(#{var})에서 오고, 발송 시 알림 data 로 치환된다.
         $this->makeDriver(
-            $this->fakeTemplate(['subject' => '', 'body' => '{name} 님 {order_number} 주문 완료']),
+            $this->fakeTemplate(),
             $this->binding(),
             $builder,
-        )->send($member, $this->notification());
+            kakao: ['templateCode' => 'TW_1234', 'templateContent' => '#{name}님 #{order_number} 주문 완료'],
+        )->send($member, $this->notification(['name' => '김철수', 'order_number' => 'A1']));
 
         $this->assertSame(
-            '#{name} 님 #{order_number} 주문 완료',
+            '김철수님 A1 주문 완료',
             $builder->calls[0]['message'],
-            '코어 {var} 형식을 알림톡 #{var} 형식으로 치환해야 한다.',
+            '카카오 본문의 #{var} 를 알림 data 로 치환해야 한다.',
         );
     }
 
-    public function test_이미_알림톡_형식인_변수는_중복_변환하지_않는다(): void
+    public function test_카카오_버튼을_발송_extra로_전달한다(): void
     {
         Bus::fake();
         $member = User::factory()->create(['mobile' => '01011112222']);
-        $builder = $this->spyBuilder();
+
+        // 버튼 URL 변수까지 치환돼 payload button 에 실려야 한다(회귀: 이전엔 버튼 자체가 누락).
+        $builder = new class extends MessagePayloadBuilder
+        {
+            /** @var array<int, array<string, mixed>> */
+            public array $extras = [];
+
+            public function __construct() {}
+
+            public function buildAlimtalk(string $to, string $templateCode, string $message, string $refkey, array $extra = []): array
+            {
+                $this->extras[] = $extra;
+
+                return ['type' => 'at', 'to' => $to, 'refkey' => $refkey, 'content' => ['at' => array_merge(['message' => $message], $extra)]];
+            }
+        };
 
         $this->makeDriver(
-            $this->fakeTemplate(['subject' => '', 'body' => '#{name} 님 {order_number}']),
+            $this->fakeTemplate(),
             $this->binding(),
             $builder,
-        )->send($member, $this->notification());
+            kakao: [
+                'templateCode' => 'TW_1234',
+                'templateContent' => '#{name}님 주문 완료',
+                'buttons' => [
+                    ['name' => '주문조회', 'linkType' => 'WL', 'linkMo' => 'https://m.shop/orders/#{order_number}'],
+                ],
+            ],
+        )->send($member, $this->notification(['name' => '김철수', 'order_number' => 'A1']));
 
-        $this->assertSame(
-            '#{name} 님 #{order_number}',
-            $builder->calls[0]['message'],
-            '이미 #{var} 인 변수는 ##{var} 로 이중 변환되면 안 된다.',
-        );
+        $button = $builder->extras[0]['button'][0];
+        $this->assertSame('WL', $button['type']);
+        $this->assertSame('https://m.shop/orders/A1', $button['url_mobile'], '버튼 URL 변수도 치환돼 발송돼야 한다.');
     }
 
     public function test_대체발송_o_n이면_payload에_sms_resend가_병합된다(): void
@@ -304,5 +372,18 @@ class AlimtalkChannelDriverTest extends PluginTestCase
         $this->makeDriver($this->fakeTemplate(), $this->binding())->send($member, new Notification);
 
         Bus::assertNotDispatched(SendMessageJob::class);
+    }
+
+    public function test_정상_조건에서_발송하고_이력을_생성한다(): void
+    {
+        // 비활성 확장 채널의 발송 차단은 코어 via() 책임이며 GenericNotificationViaTest 가 검증한다.
+        // 이 드라이버 테스트는 정상 조건(활성 전제)에서의 발송·이력 생성만 검증한다.
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        $this->makeDriver($this->fakeTemplate(), $this->binding())->send($member, $this->notification());
+
+        Bus::assertDispatched(SendMessageJob::class);
+        $this->assertDatabaseCount('bizppurio_dispatches', 1);
     }
 }

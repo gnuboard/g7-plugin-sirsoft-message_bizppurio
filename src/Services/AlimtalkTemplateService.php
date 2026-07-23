@@ -131,9 +131,14 @@ class AlimtalkTemplateService
     }
 
     /**
-     * 발신프로필(사용중) 정보를 조회합니다.
+     * 발신프로필(사용중) 목록을 조회합니다.
      *
-     * @return array<string, mixed> 발신프로필 응답 data
+     * 규격(5.발신프로필관리): `/v3/kakao/profile/use` 응답의 data 는
+     * `{success: [...프로필], fail: [...조회실패]}` 2단 봉투다. 실제 발신프로필 목록은
+     * data.success 배열에 담기므로 그 배열을 반환한다(data 통째 반환 시 success/fail
+     * 껍데기가 소비처에 그대로 노출됨).
+     *
+     * @return array<int, array<string, mixed>> 발신프로필 목록(data.success)
      *
      * @throws BizppurioApiException 자격증명 미설정·조회 실패 시
      */
@@ -143,7 +148,7 @@ class AlimtalkTemplateService
 
         $this->assertSuccess($response);
 
-        return (array) ($response['data'] ?? []);
+        return array_values((array) ($response['data']['success'] ?? []));
     }
 
     /**

@@ -58,9 +58,13 @@ return [
     '7107' => 'Blocked sender key',
     '7204' => 'Template mismatch',
     '7206' => 'Unapproved template',
+    '7306' => 'Kakao system error',
+    '7307' => 'Processing delayed',
     '7308' => 'Phone number error',
     '7320' => 'Receiver blocked',
     '7325' => 'Variable length exceeded',
+    '7421' => 'Timeout',
     '7436' => 'Insufficient wallet balance (Alimtalk)',
+    '7437' => 'Message request failed',
     '7523' => 'Other error',
 ];

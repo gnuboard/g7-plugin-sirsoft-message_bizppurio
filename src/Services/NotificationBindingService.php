@@ -34,10 +34,12 @@ class NotificationBindingService
     /**
      * @param  BizppurioNotificationBindingRepositoryInterface  $bindings  연동 조회/저장
      * @param  AlimtalkTemplateService  $templates  카카오 승인 템플릿 조회
+     * @param  KakaoTemplateContentResolver  $kakaoContent  발송용 템플릿 내용 캐시(수동 초기화 위임)
      */
     public function __construct(
         private readonly BizppurioNotificationBindingRepositoryInterface $bindings,
         private readonly AlimtalkTemplateService $templates,
+        private readonly KakaoTemplateContentResolver $kakaoContent,
     ) {}
 
     /**
@@ -47,19 +49,55 @@ class NotificationBindingService
      * 데 쓴다. 코어 목록은 코어가 렌더하므로(⚑⚑ 결정 A) 알림 정의와 조인하지 않고 binding
      * 만 내려준다. 편집 모달은 def.type 으로 이 맵을 조회한다.
      *
+     * $withAvailability=true 이면(알림톡 탭 진입 표시용) 카카오 승인 목록을 1회 조회해 각 연동에
+     * is_unavailable(연결한 카카오 템플릿이 삭제·차단·미승인되어 발송 불가) 플래그를 부여한다.
+     * 저장 응답(store)처럼 프리필만 필요한 경로는 기본값(false)으로 호출해 카카오 조회를 생략한다.
+     *
+     * @param  bool  $withAvailability  카카오 승인 목록과 대조해 소실 여부를 부여할지 (표시용)
      * @return array<string, array<string, mixed>> notification_type 키의 연동 맵
      */
-    public function all(): array
+    public function all(bool $withAvailability = false): array
     {
+        // 소실 판정 대상 = 발송 가능한(승인) 카카오 템플릿 코드 집합. 조회 실패(카카오 장애·자격증명
+        // 미설정)면 null 을 반환해 판정 자체를 건너뛴다 — 살아 있는 연동이 일시 장애로 "사용 불가"로
+        // 오탐되어 화면이 전부 경고로 물드는 것을 막는다(발송 시점 판정과 동일한 안전측 기준).
+        $sendableCodes = $withAvailability ? $this->sendableTemplateCodesOrNull() : null;
+
         return $this->bindings->allByChannel(self::CHANNEL)
             ->keyBy('notification_type')
-            ->map(fn (BizppurioNotificationBinding $binding) => [
-                'notification_type' => $binding->notification_type,
-                'template_code' => $binding->template_code,
-                'template_name' => $binding->template_name,
-                'fallback_sms_enabled' => (bool) $binding->fallback_sms_enabled,
-            ])
+            ->map(function (BizppurioNotificationBinding $binding) use ($sendableCodes) {
+                $info = [
+                    'notification_type' => $binding->notification_type,
+                    'template_code' => $binding->template_code,
+                    'template_name' => $binding->template_name,
+                    'fallback_sms_enabled' => (bool) $binding->fallback_sms_enabled,
+                ];
+
+                // 승인 목록 조회에 성공했을 때만 소실 여부를 부여한다(null=판정 생략).
+                if ($sendableCodes !== null) {
+                    $info['is_unavailable'] = ! in_array($binding->template_code, $sendableCodes, true);
+                }
+
+                return $info;
+            })
             ->all();
+    }
+
+    /**
+     * 발송 가능한(승인) 카카오 템플릿 코드 집합을 반환하되, 조회 실패 시 null 을 반환합니다.
+     *
+     * approvedTemplates() 는 자격증명 미설정·카카오 장애 시 BizppurioApiException 을 던진다. 소실
+     * 판정은 "표시 부가정보"이므로 실패를 삼키고 null 을 반환해, 호출부가 판정을 건너뛰게 한다.
+     *
+     * @return array<int, string>|null 승인 template_code 목록(성공) 또는 null(조회 실패)
+     */
+    private function sendableTemplateCodesOrNull(): ?array
+    {
+        try {
+            return array_column($this->approvedTemplates(), 'template_code');
+        } catch (BizppurioApiException) {
+            return null;
+        }
     }
 
     /**
@@ -114,6 +152,24 @@ class NotificationBindingService
     public function unbind(string $notificationType): void
     {
         $this->bindings->delete($notificationType, self::CHANNEL);
+    }
+
+    /**
+     * 연결된 모든 알림톡 템플릿의 발송용 내용 캐시를 초기화합니다 (관리자 수동 갱신).
+     *
+     * 카카오에서 템플릿 내용을 방금 바꿔 캐시 만료(기본 1시간)를 기다리지 않고 즉시 반영하고
+     * 싶을 때 사용한다. 연결(binding)된 template_code 를 모아 각 캐시를 비우면 다음 발송에서
+     * 최신 내용으로 재조회된다.
+     *
+     * @return int 초기화한 캐시 키 수(연결된 고유 template_code 수)
+     */
+    public function clearTemplateContentCache(): int
+    {
+        $codes = $this->bindings->allByChannel(self::CHANNEL)
+            ->pluck('template_code')
+            ->all();
+
+        return $this->kakaoContent->clearMany($codes);
     }
 
     /**

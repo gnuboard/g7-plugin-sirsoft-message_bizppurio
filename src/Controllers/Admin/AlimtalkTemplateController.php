@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Plugins\Sirsoft\MessageBizppurio\Concerns\GuardsKakaoRequests;
 use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkTemplateService;
+use Plugins\Sirsoft\MessageBizppurio\Services\NotificationBindingService;
 
 /**
  * 알림톡 템플릿 조회 컨트롤러 (Phase 5).
@@ -30,9 +31,11 @@ class AlimtalkTemplateController extends AdminBaseController
 
     /**
      * @param  AlimtalkTemplateService  $service  알림톡 템플릿 서비스
+     * @param  NotificationBindingService  $bindings  연동 서비스(발송 내용 캐시 초기화 위임)
      */
     public function __construct(
         private readonly AlimtalkTemplateService $service,
+        private readonly NotificationBindingService $bindings,
     ) {
         parent::__construct();
     }
@@ -94,6 +97,24 @@ class AlimtalkTemplateController extends AdminBaseController
         return $this->guard(fn () => ResponseHelper::success('messages.success', [
             'profiles' => $this->service->senderProfiles(),
         ]));
+    }
+
+    /**
+     * 발송용 템플릿 내용 캐시를 초기화합니다 (관리자 수동 갱신).
+     *
+     * 카카오에서 템플릿 내용을 방금 변경해 캐시 만료(기본 1시간)를 기다리지 않고 즉시
+     * 반영하고 싶을 때 호출한다. 연결된 모든 알림톡 템플릿의 캐시를 비워, 다음 발송에서
+     * 최신 내용으로 재조회되게 한다. kapi 호출 없이 로컬 캐시만 비우므로 rate limit 영향 없음.
+     *
+     * @return JsonResponse data.cleared 에 초기화한 캐시 수
+     */
+    public function clearCache(): JsonResponse
+    {
+        $cleared = $this->bindings->clearTemplateContentCache();
+
+        return ResponseHelper::success('messages.cache.cleared', [
+            'cleared' => $cleared,
+        ]);
     }
 
     // kapi 호출을 감싸 BizppurioApiException 을 422 응답으로 변환하는 guard() 는

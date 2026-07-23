@@ -48,8 +48,10 @@ class NotificationBindingController extends AdminBaseController
      */
     public function index(): JsonResponse
     {
+        // 알림톡 탭 진입 표시용 — 카카오 승인 목록과 대조해 소실(발송 불가) 연동을 함께 표시한다.
+        // 카카오 조회 실패 시 서비스가 판정을 생략하므로 이 조회가 목록 표시를 막지 않는다.
         return ResponseHelper::success('messages.success', [
-            'bindings' => $this->service->all(),
+            'bindings' => $this->service->all(withAvailability: true),
         ]);
     }
 

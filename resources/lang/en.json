@@ -44,6 +44,14 @@
       "sender_key": {
         "label": "Alimtalk Sender Profile Key",
         "hint": "The 40-character sender profile key used for alimtalk delivery and template lookup."
+      },
+      "template_cache_minutes": {
+        "label": "Alimtalk content cache (minutes)",
+        "hint": "Reuses Kakao template content for this period. 0 = always latest (not recommended for high volume).",
+        "clear_cache": "Clear cache",
+        "clear_cache_hint": "If you edited a template in Kakao, click to apply it immediately.",
+        "clear_cache_success": "Template content cache cleared. The latest content will apply from the next dispatch.",
+        "clear_cache_failed": "Failed to clear the cache."
       }
     },
     "report": {
@@ -53,11 +61,16 @@
       "copy": "Copy",
       "copied": "Report endpoint copied to clipboard."
     },
+    "cache": {
+      "section_title": "Alimtalk dispatch content cache",
+      "section_description": "When sending alimtalk, the template content (body and buttons) registered in Kakao must be sent as-is. To avoid requesting the content from Kakao on every dispatch, the fetched content is reused (cached) for a set period. This keeps sending fast and avoids hitting Kakao's lookup rate limit even under high volume."
+    },
     "tabs": {
       "connection": "Settings",
       "templates": "Alimtalk Templates"
     },
     "preparation": {
+      "intro": "To send SMS or Kakao Alimtalk messages, first complete the preparations below in the Bizppurio console.",
       "sms_label": "SMS/LMS",
       "sms_sender": "Register your sender number.",
       "kakao_label": "Kakao Alimtalk",
@@ -73,6 +86,7 @@
     "section_hint": "Only approved alimtalk templates can be linked. Saving applies to this notification immediately.",
     "modal_title": "Alimtalk Binding · {name}",
     "unbound": "Not connected",
+    "unavailable": "Unavailable — reconnect needed",
     "btn_connect": "Connect",
     "btn_change": "Change",
     "fallback_on": "SMS fallback ON",

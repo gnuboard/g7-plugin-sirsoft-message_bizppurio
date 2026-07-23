@@ -92,9 +92,11 @@ describe('alimtalk templates — 목록 서브뷰 (조회 전용)', () => {
         expect(raw).toContain('templateKeyword');
     });
 
-    it('툴바에 [새 템플릿] 등록 버튼이 없고 새로고침만 있다', () => {
+    it('툴바에 [새 템플릿] 등록 버튼이 없고 새로고침만 있다 (캐시 초기화는 환경설정 탭으로 이관)', () => {
         const raw = JSON.stringify(findById(root, 'templates_toolbar'));
         expect(raw).toContain('templates.list.refresh');
+        // 캐시 초기화·캐시 시간은 환경설정 탭으로 옮겼으므로 템플릿 툴바에는 없다.
+        expect(raw).not.toContain('cache/clear');
         // 등록 진입(폼 전환) 없음
         expect(raw).not.toContain('templates.list.new');
         expect(raw).not.toContain('"form"');
@@ -278,5 +280,30 @@ describe('alimtalk templates — i18n 정합', () => {
             expect(resolve(ko, path), `ko 누락: ${path}`).toBeTruthy();
             expect(resolve(en, path), `en 누락: ${path}`).toBeTruthy();
         }
+    });
+});
+
+describe('alimtalk templates — 환경설정 탭: 발송 내용 캐시 (독립 카드)', () => {
+    it('발송 내용 캐시가 독립 카드로 있고 캐시 시간(분) 입력을 담는다 (form 저장 대상)', () => {
+        const card = findById(root, 'cache_section');
+        expect(card).toBeTruthy();
+        const raw = JSON.stringify(card);
+        // 카드 제목 + 분 단위 숫자 입력 + form 바인딩(name)
+        expect(raw).toContain('settings.cache.section_title');
+        expect(raw).toContain('template_cache_minutes');
+        expect(raw).toContain('"number"');
+        expect(raw).toContain('settings.fields.template_cache_minutes.label');
+        expect(raw).toContain('settings.fields.template_cache_minutes.hint');
+    });
+
+    it('같은 카드에 캐시 초기화 버튼 + 안내문이 함께 있다 (한 묶음)', () => {
+        const raw = JSON.stringify(findById(root, 'cache_section'));
+        // 즉시 캐시 비우기 — API 호출 + 성공/실패 토스트 + 상시 안내문
+        expect(raw).toContain('alimtalk-templates/cache/clear');
+        expect(raw).toContain('apiCall');
+        expect(raw).toContain('settings.fields.template_cache_minutes.clear_cache');
+        expect(raw).toContain('settings.fields.template_cache_minutes.clear_cache_hint');
+        expect(raw).toContain('settings.fields.template_cache_minutes.clear_cache_success');
+        expect(raw).toContain('settings.fields.template_cache_minutes.clear_cache_failed');
     });
 });

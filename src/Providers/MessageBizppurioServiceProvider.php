@@ -13,6 +13,7 @@ use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificatio
 use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\BizppurioTokenService;
 use Plugins\Sirsoft\MessageBizppurio\Services\DispatchLinkContext;
+use Plugins\Sirsoft\MessageBizppurio\Services\KakaoTemplateContentResolver;
 use Plugins\Sirsoft\MessageBizppurio\Services\SmsChannelDriver;
 use Plugins\Sirsoft\MessageBizppurio\Services\WebhookReportService;
 
@@ -50,6 +51,7 @@ class MessageBizppurioServiceProvider extends BasePluginServiceProvider
     protected array $cacheServices = [
         BizppurioTokenService::class,
         WebhookReportService::class,
+        KakaoTemplateContentResolver::class,
     ];
 
     /**

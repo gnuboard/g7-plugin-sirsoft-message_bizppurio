@@ -83,6 +83,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->g
     | 페이지 알림톡 템플릿 탭이 소비한다.
     */
     Route::prefix('alimtalk-templates')->name('alimtalk-templates.')->group(function () {
+        // 발송 템플릿 내용 캐시 초기화(수동 갱신) — 카카오에서 템플릿을 방금 바꿔 즉시 반영이
+        // 필요할 때 관리자가 캐시를 비운다. 쓰기 동작이므로 messaging.manage 권한. 구체 경로를
+        // 먼저 두어 GET /{templateCode} 와 충돌하지 않게 한다.
+        Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.manage')->group(function () {
+            Route::post('/cache/clear', [AlimtalkTemplateController::class, 'clearCache'])->name('cache.clear');
+        });
+
         Route::middleware('permission:admin,sirsoft-message_bizppurio.messaging.view')->group(function () {
             Route::get('/', [AlimtalkTemplateController::class, 'index'])->name('index');
             Route::get('/categories', [AlimtalkTemplateController::class, 'categories'])->name('categories');

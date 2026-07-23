@@ -65,6 +65,20 @@ describe('plugin_settings.json — 섹션', () => {
         expect(findById(root, id)).toBeTruthy();
     });
 
+    it('준비 안내 박스는 총괄 안내(intro)와 콘솔 링크를 구분선 위에 먼저 노출한다', () => {
+        const notice = findById(root, 'preparation_notice');
+        const raw = JSON.stringify(notice);
+        // 총괄 안내 문구 키 + 콘솔 링크가 존재한다
+        expect(raw).toContain('sirsoft-message_bizppurio.settings.preparation.intro');
+        expect(raw).toContain('sirsoft-message_bizppurio.settings.preparation.console_link');
+        // 총괄 안내가 채널별 준비 목록(sms_label)보다 먼저 배치된다 (이미지1 구조)
+        const introIdx = raw.indexOf('preparation.intro');
+        const smsIdx = raw.indexOf('preparation.sms_label');
+        expect(introIdx).toBeGreaterThanOrEqual(0);
+        expect(smsIdx).toBeGreaterThanOrEqual(0);
+        expect(introIdx).toBeLessThan(smsIdx);
+    });
+
     it('검수 모드 카드에 is_test_mode Toggle 이 있다', () => {
         const card = findById(root, 'test_mode_card');
         expect(card).toBeTruthy();
