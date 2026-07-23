@@ -223,4 +223,17 @@ class SmsChannelDriverTest extends PluginTestCase
 
         Bus::assertNotDispatched(SendMessageJob::class);
     }
+
+    public function test_정상_조건에서_발송하고_이력을_생성한다(): void
+    {
+        // 비활성 확장 채널의 발송 차단은 코어 via() 책임이며 GenericNotificationViaTest 가 검증한다.
+        // 이 드라이버 테스트는 정상 조건(활성 전제)에서의 발송·이력 생성만 검증한다.
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        $this->makeDriver($this->fakeTemplate())->send($member, $this->notification());
+
+        Bus::assertDispatched(SendMessageJob::class);
+        $this->assertDatabaseCount('bizppurio_dispatches', 1);
+    }
 }

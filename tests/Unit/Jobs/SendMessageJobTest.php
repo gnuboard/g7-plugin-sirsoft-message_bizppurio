@@ -2,6 +2,7 @@
 
 namespace Plugins\Sirsoft\MessageBizppurio\Tests\Unit\Jobs;
 
+use Illuminate\Http\Client\ConnectionException;
 use Mockery;
 use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
 use Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException;
@@ -111,6 +112,55 @@ class SendMessageJobTest extends PluginTestCase
         $job = new SendMessageJob($this->payload, 'ref1');
 
         $this->assertTrue($job->afterCommit);
+    }
+
+    public function test_최종실패_콜백은_pending이력을_failed로_마감하고_사유를_기록한다(): void
+    {
+        // 타임아웃·연결실패는 결과코드 없는 ConnectionException 으로 재시도 소진 후 failed() 로 온다.
+        $dispatch = $this->seedPending('ref1');
+
+        $job = new SendMessageJob($this->payload, 'ref1');
+        $job->failed(new ConnectionException('cURL error 28: Connection timed out'));
+
+        $dispatch->refresh();
+        $this->assertSame(DispatchStatus::Failed, $dispatch->status);
+        $this->assertNull($dispatch->result_code); // 전송 실패라 결과코드 없음
+        $this->assertStringContainsString('timed out', (string) $dispatch->result_message);
+    }
+
+    public function test_최종실패_콜백은_bizppurio_api_exception의_결과코드를_보존한다(): void
+    {
+        $dispatch = $this->seedPending('ref1');
+
+        $job = new SendMessageJob($this->payload, 'ref1');
+        $job->failed(new BizppurioApiException('일시 오류', resultCode: '5003'));
+
+        $dispatch->refresh();
+        $this->assertSame(DispatchStatus::Failed, $dispatch->status);
+        $this->assertSame('5003', $dispatch->result_code);
+    }
+
+    public function test_이미_확정된_이력은_최종실패_콜백이_덮어쓰지_않는다(): void
+    {
+        // webhook 이 먼저 success 로 확정한 뒤 failed() 가 늦게 불려도 멱등해야 한다.
+        $dispatch = $this->seedPending('ref1');
+        $dispatch->update(['status' => DispatchStatus::Success->value, 'result_code' => '4000']);
+
+        $job = new SendMessageJob($this->payload, 'ref1');
+        $job->failed(new ConnectionException('timed out'));
+
+        $dispatch->refresh();
+        $this->assertSame(DispatchStatus::Success, $dispatch->status);
+        $this->assertSame('4000', $dispatch->result_code);
+    }
+
+    public function test_이력이_없으면_최종실패_콜백은_아무것도_하지_않는다(): void
+    {
+        // 이력 seed 없이 호출 — 예외 없이 조용히 종료해야 한다.
+        $job = new SendMessageJob($this->payload, 'missing-ref');
+        $job->failed(new ConnectionException('timed out'));
+
+        $this->assertDatabaseMissing('bizppurio_dispatches', ['refkey' => 'missing-ref']);
     }
 
     protected function tearDown(): void

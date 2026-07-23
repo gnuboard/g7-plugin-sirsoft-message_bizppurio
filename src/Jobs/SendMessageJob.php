@@ -130,18 +130,39 @@ class SendMessageJob implements ShouldQueue
     }
 
     /**
-     * 모든 재시도 소진 후 최종 실패 시 로그를 남깁니다.
+     * 모든 재시도 소진 후 최종 실패 시 로그를 남기고 발송 이력을 실패로 마감합니다.
+     *
+     * 타임아웃·연결실패(ConnectionException)는 결과코드 없는 예외로 handle() 의 상태 갱신
+     * 분기를 우회하므로, 재시도 소진 후 이력이 pending 인 채 방치된다. 여기서 refkey 로 이력을
+     * 조회해 failed 로 마감한다(전송 실패라 최종 실패는 webhook 으로도 회수 불가). 이미 확정
+     * (success/failed)된 이력은 webhook 이 먼저 결과를 확정한 경우이므로 덮어쓰지 않는다(멱등).
      *
      * @param  Throwable  $exception  마지막으로 발생한 예외
      */
     public function failed(Throwable $exception): void
     {
+        $resultCode = $exception instanceof BizppurioApiException
+            ? $exception->getResultCode()
+            : null;
+
         Log::error('비즈뿌리오 발송 Job 최종 실패', [
             'refkey' => $this->refkey,
             'error' => $exception->getMessage(),
-            'result_code' => $exception instanceof BizppurioApiException
-                ? $exception->getResultCode()
-                : null,
+            'result_code' => $resultCode,
+        ]);
+
+        $dispatches = app(BizppurioDispatchRepositoryInterface::class);
+        $dispatch = $dispatches->findByRefkey($this->refkey);
+
+        // 이력 없음(비정상) 또는 이미 확정(webhook 선반영) → 마감 불필요(멱등)
+        if ($dispatch === null || $dispatch->status->isFinal()) {
+            return;
+        }
+
+        $dispatches->update($dispatch, [
+            'status' => DispatchStatus::Failed->value,
+            'result_code' => $resultCode,
+            'result_message' => $exception->getMessage(),
         ]);
     }
 }
