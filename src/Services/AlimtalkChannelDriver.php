@@ -7,14 +7,15 @@ namespace Plugins\Sirsoft\MessageBizppurio\Services;
 use App\Models\User;
 use App\Notifications\BaseNotification;
 use App\Notifications\GenericNotification;
+use App\Services\NotificationDefinitionService;
 use App\Services\NotificationTemplateService;
 use App\Services\PluginSettingsService;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchChannel;
 use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchSource;
 use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
+use Plugins\Sirsoft\MessageBizppurio\Exceptions\NotificationSendSkippedException;
 use Plugins\Sirsoft\MessageBizppurio\Jobs\SendMessageJob;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificationBindingRepositoryInterface;
@@ -35,18 +36,21 @@ use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificatio
  *    연결(binding)이 없으면 발송하지 않는다(알림톡은 임의 본문 발송 불가 — 승인 템플릿 필수).
  *
  * 처리 흐름:
- *  1. 알림 유형(type)으로 활성 binding 조회. 없으면 skip(연결 안 된 알림은 알림톡 미발송).
- *  2. 카카오 승인 템플릿 내용 조회(KakaoTemplateContentResolver, 캐시). 실패 시 skip.
+ *  1. 알림 유형(type)으로 활성 binding 조회. 없으면 NotificationSendSkippedException.
+ *  2. 카카오 승인 템플릿 내용 조회(KakaoTemplateContentResolver, 캐시). 실패 시 동일 예외.
  *  3. 전화번호 해석(회원=mobile, 비회원=data 의 _recipient_phone — SmsChannelDriver 와 동일 계약).
- *  4. 카카오 내용 → 발송 형식 변환 + 변수(#{var}) 치환(AlimtalkPayloadMapper). 본문 비면 skip.
+ *  4. 카카오 내용 → 발송 형식 변환 + 변수(#{var}) 치환(AlimtalkPayloadMapper). 본문 비면 동일 예외.
  *  5. refkey 생성 → payload 조립(버튼·요소는 extra, 대체발송 ON 시 resend/recontent 병합) →
  *     이력 pending → SendMessageJob 위임.
  *
- * 카카오 조회 실패(고아 template_code·장애·rate limit)는 알림톡 발송을 skip 하고 로그만 남긴다.
- * 이 단계에선 알림톡 발송 자체가 일어나지 않으므로 SMS 대체발송은 트리거되지 않는다 — SMS 대체는
- * 알림톡 payload 에 resend 로 병합되어, 알림톡이 접수된 뒤 비즈뿌리오 측 발송 실패(수신 거부·미가입
- * 등)에만 작동한다(fallback_sms_enabled ON 시). 발송된 알림톡의 개별 실패는 비즈뿌리오 결과코드로
- * webhook·Job 이 이력에 기록한다(Phase 4).
+ * 1~4 단계는 비즈뿌리오 API 호출 자체를 시도하지 못하는 사전 조건 미비 상태라
+ * NotificationSendSkippedException 을 던진다. 코어 NotificationDispatcher 의
+ * catch(\Exception)가 이를 channel_send_failed 훅으로 연결해, 발송 이력에 "성공"이 아닌
+ * "실패"로 정확히 기록되게 한다(조용히 return 하면 코어가 "정상 처리 완료"로 오인해 성공으로
+ * 기록하는 문제 — 이슈 #28). 이 단계에선 알림톡 발송 자체가 일어나지 않으므로 SMS 대체발송도
+ * 트리거되지 않는다 — SMS 대체는 알림톡 payload 에 resend 로 병합되어, 알림톡이 접수된 뒤
+ * 비즈뿌리오 측 발송 실패(수신 거부·미가입 등)에만 작동한다(fallback_sms_enabled ON 시).
+ * 발송된 알림톡의 개별 실패는 비즈뿌리오 결과코드로 webhook·Job 이 이력에 기록한다(Phase 4).
  */
 class AlimtalkChannelDriver
 {
@@ -58,6 +62,7 @@ class AlimtalkChannelDriver
 
     /**
      * @param  NotificationTemplateService  $templateService  SMS 대체발송 본문(코어 alimtalk 템플릿) resolve
+     * @param  NotificationDefinitionService  $definitionService  알림 유형의 사람이 읽는 이름 조회(스킵 예외 메시지용)
      * @param  BizppurioNotificationBindingRepositoryInterface  $bindings  이벤트↔템플릿 연결 조회
      * @param  MessagePayloadBuilder  $payloadBuilder  발송 payload 조립
      * @param  BizppurioDispatchRepositoryInterface  $dispatches  발송 이력 영속화
@@ -68,6 +73,7 @@ class AlimtalkChannelDriver
      */
     public function __construct(
         private readonly NotificationTemplateService $templateService,
+        private readonly NotificationDefinitionService $definitionService,
         private readonly BizppurioNotificationBindingRepositoryInterface $bindings,
         private readonly MessagePayloadBuilder $payloadBuilder,
         private readonly BizppurioDispatchRepositoryInterface $dispatches,
@@ -76,6 +82,25 @@ class AlimtalkChannelDriver
         private readonly AlimtalkPayloadMapper $payloadMapper,
         private readonly PluginSettingsService $pluginSettings,
     ) {}
+
+    /**
+     * 알림 유형의 사람이 읽는 이름을 반환합니다 (스킵 예외 메시지용).
+     *
+     * 정의 조회 실패·이름 미설정 시 코드값(type)을 그대로 반환한다(안전 폴백).
+     *
+     * @param  string  $type  알림 유형 코드값 (welcome 등)
+     * @return string 사람이 읽는 이름 또는 코드값
+     */
+    private function resolveTypeLabel(string $type): string
+    {
+        try {
+            $label = $this->definitionService->resolve($type)?->getLocalizedName();
+
+            return $label !== null && $label !== '' ? $label : $type;
+        } catch (\Throwable $e) {
+            return $type;
+        }
+    }
 
     /**
      * 알림을 카카오 알림톡으로 발송합니다.
@@ -95,11 +120,13 @@ class AlimtalkChannelDriver
         $type = $notification->getType();
 
         // 1. 이벤트↔알림톡 템플릿 연결 조회 (미연결/비활성이면 알림톡 미발송)
+        //    코어 NotificationDispatcher::sendToNotifiable()의 catch(\Exception)가 이 예외를
+        //    channel_send_failed 훅으로 연결해, 발송 이력에 "성공"이 아닌 "실패"로 기록되게 한다.
         $binding = $this->bindings->findActive($type, DispatchChannel::Alimtalk->value);
         if ($binding === null) {
-            Log::info('비즈뿌리오 알림톡 발송 skip — 연결된 템플릿 없음', ['type' => $type]);
-
-            return;
+            throw new NotificationSendSkippedException(
+                __('sirsoft-message_bizppurio::messages.send_skipped.alimtalk_binding_missing', ['type' => $this->resolveTypeLabel($type)])
+            );
         }
 
         // 2. 카카오 승인 템플릿 내용(본문·버튼·요소) 조회 — 발송 API 는 완성본을 요구하므로,
@@ -107,29 +134,26 @@ class AlimtalkChannelDriver
         //    조회 실패(고아·장애·rate limit)면 알림톡 본문 소스가 없으므로 skip 한다.
         $kakaoContent = $this->kakaoContent->resolve($binding->template_code);
         if ($kakaoContent === null) {
-            Log::info('비즈뿌리오 알림톡 발송 skip — 카카오 템플릿 내용 조회 실패', [
-                'type' => $type,
-                'template_code' => $binding->template_code,
-            ]);
-
-            return;
+            throw new NotificationSendSkippedException(
+                __('sirsoft-message_bizppurio::messages.send_skipped.alimtalk_kakao_content_unavailable', ['type' => $this->resolveTypeLabel($type)])
+            );
         }
 
         // 3. 전화번호 해석 (회원=mobile, 비회원=data 의 _recipient_phone)
         $to = $this->resolvePhone($notifiable, $notification->getData());
         if ($to === null) {
-            Log::info('비즈뿌리오 알림톡 발송 skip — 전화번호 없음', ['type' => $type]);
-
-            return;
+            throw new NotificationSendSkippedException(
+                __('sirsoft-message_bizppurio::messages.send_skipped.recipient_phone_missing', ['type' => $this->resolveTypeLabel($type)])
+            );
         }
 
         // 4. 카카오 내용 → 발송 형식 변환 + 변수(#{var}) 치환. 본문이 비면 발송 불가라 skip.
         $mapped = $this->payloadMapper->map($kakaoContent, $notification->getData());
         $message = (string) ($mapped['message'] ?? '');
         if (trim($message) === '') {
-            Log::info('비즈뿌리오 알림톡 발송 skip — 본문 비어 있음', ['type' => $type]);
-
-            return;
+            throw new NotificationSendSkippedException(
+                __('sirsoft-message_bizppurio::messages.send_skipped.message_body_empty', ['type' => $this->resolveTypeLabel($type)])
+            );
         }
 
         // 5. refkey 생성 → payload 조립 (버튼·바로연결·요소는 extra 로 전달, 대체발송 ON 시 SMS resend 병합)

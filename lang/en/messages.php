@@ -76,6 +76,15 @@ return [
         'sender_key_missing' => 'Please set the alimtalk sender profile key first.',
     ],
 
+    // Send skipped (channel driver send() precondition not met — recorded as "Failed" in core notification log)
+    'send_skipped' => [
+        'alimtalk_binding_missing' => 'Skipped sending: no alimtalk template is bound. (notification type: :type)',
+        'alimtalk_kakao_content_unavailable' => 'Skipped sending: failed to fetch the approved Kakao template content. (notification type: :type)',
+        'sms_template_missing' => 'Skipped sending: no SMS template found. (notification type: :type)',
+        'recipient_phone_missing' => 'Skipped sending: recipient phone number is missing. (notification type: :type)',
+        'message_body_empty' => 'Skipped sending: message body is empty. (notification type: :type)',
+    ],
+
     // Notification-to-alimtalk template binding (NotificationBindingController responses)
     'binding' => [
         'saved' => 'Alimtalk binding saved.',

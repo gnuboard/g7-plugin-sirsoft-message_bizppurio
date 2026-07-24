@@ -76,6 +76,15 @@ return [
         'sender_key_missing' => '알림톡 발신프로필 키를 먼저 설정하세요.',
     ],
 
+    // 발송 건너뜀 (채널 드라이버 send() 사전 조건 미충족 — 코어 발송 이력에 "실패"로 기록됨)
+    'send_skipped' => [
+        'alimtalk_binding_missing' => '알림톡 템플릿이 연결되지 않아 발송을 건너뛰었습니다. (알림 유형: :type)',
+        'alimtalk_kakao_content_unavailable' => '카카오 승인 템플릿 내용을 조회하지 못해 발송을 건너뛰었습니다. (알림 유형: :type)',
+        'sms_template_missing' => 'SMS 템플릿이 없어 발송을 건너뛰었습니다. (알림 유형: :type)',
+        'recipient_phone_missing' => '수신자 전화번호가 없어 발송을 건너뛰었습니다. (알림 유형: :type)',
+        'message_body_empty' => '발송 본문이 비어 있어 발송을 건너뛰었습니다. (알림 유형: :type)',
+    ],
+
     // 알림↔알림톡 템플릿 연동 (NotificationBindingController 응답)
     'binding' => [
         'saved' => '알림톡 연동을 저장했습니다.',

@@ -6,11 +6,13 @@ use App\Models\NotificationTemplate;
 use App\Models\User;
 use App\Notifications\GenericNotification;
 use App\Notifications\GuestNotifiable;
+use App\Services\NotificationDefinitionService;
 use App\Services\NotificationTemplateService;
 use App\Services\PluginSettingsService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
+use Plugins\Sirsoft\MessageBizppurio\Exceptions\NotificationSendSkippedException;
 use Plugins\Sirsoft\MessageBizppurio\Jobs\SendMessageJob;
 use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\BizppurioDispatchRepository;
@@ -65,8 +67,13 @@ class SmsChannelDriverTest extends PluginTestCase
             ->with('sirsoft-message_bizppurio', 'is_test_mode', true)
             ->andReturn($isTestMode);
 
+        // 스킵 예외 메시지의 알림 유형 라벨 조회 — 정의 없음(null)이면 resolveTypeLabel 이 코드값으로 폴백.
+        $definitionService = Mockery::mock(NotificationDefinitionService::class);
+        $definitionService->shouldReceive('resolve')->andReturn(null);
+
         return new SmsChannelDriver(
             $templateService,
+            $definitionService,
             new SmsTypeResolver,
             $builder ?? $this->spyBuilder(),
             new BizppurioDispatchRepository,
@@ -107,14 +114,54 @@ class SmsChannelDriverTest extends PluginTestCase
         return new GenericNotification('order_confirmed', 'sirsoft-ecommerce', $data, 'module', 'sirsoft-ecommerce');
     }
 
-    public function test_템플릿이_없으면_발송하지_않는다(): void
+    public function test_템플릿이_없으면_예외를_던지고_발송하지_않는다(): void
     {
         Bus::fake();
         $member = User::factory()->create(['mobile' => '010-1234-5678']);
 
-        $this->makeDriver(null)->send($member, $this->notification());
+        $this->expectException(NotificationSendSkippedException::class);
 
-        Bus::assertNotDispatched(SendMessageJob::class);
+        try {
+            $this->makeDriver(null)->send($member, $this->notification());
+        } finally {
+            Bus::assertNotDispatched(SendMessageJob::class);
+        }
+    }
+
+    public function test_스킵_예외_메시지는_알림_유형_코드값_대신_사람이_읽는_이름을_사용한다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        $definition = Mockery::mock(\App\Models\NotificationDefinition::class);
+        $definition->shouldReceive('getLocalizedName')->andReturn('회원가입 환영');
+
+        $definitionService = Mockery::mock(NotificationDefinitionService::class);
+        $definitionService->shouldReceive('resolve')->with('order_confirmed')->andReturn($definition);
+
+        $templateService = Mockery::mock(NotificationTemplateService::class);
+        $templateService->shouldReceive('resolve')->with(Mockery::any(), 'sms')->andReturn(null);
+
+        $pluginSettings = Mockery::mock(PluginSettingsService::class);
+        $pluginSettings->shouldReceive('get')->andReturn(true);
+
+        $driver = new SmsChannelDriver(
+            $templateService,
+            $definitionService,
+            new SmsTypeResolver,
+            $this->spyBuilder(),
+            new BizppurioDispatchRepository,
+            new DispatchLinkContext,
+            $pluginSettings,
+        );
+
+        try {
+            $driver->send($member, $this->notification());
+            $this->fail('NotificationSendSkippedException 가 발생해야 한다.');
+        } catch (NotificationSendSkippedException $e) {
+            $this->assertStringContainsString('회원가입 환영', $e->getMessage(), '코드값(order_confirmed) 대신 사람이 읽는 이름이 노출돼야 한다.');
+            $this->assertStringNotContainsString('order_confirmed', $e->getMessage());
+        }
     }
 
     public function test_회원은_mobile로_발송한다(): void
@@ -211,21 +258,29 @@ class SmsChannelDriverTest extends PluginTestCase
         Bus::fake();
         $member = User::factory()->create(['mobile' => '010-1234-5678']);
 
-        // 템플릿 없음 → skip → 이력도 없어야 함
-        $this->makeDriver(null)->send($member, $this->notification());
+        // 템플릿 없음 → NotificationSendSkippedException → 이력도 없어야 함
+        $this->expectException(NotificationSendSkippedException::class);
 
-        $this->assertDatabaseCount('bizppurio_dispatches', 0);
+        try {
+            $this->makeDriver(null)->send($member, $this->notification());
+        } finally {
+            $this->assertDatabaseCount('bizppurio_dispatches', 0);
+        }
     }
 
-    public function test_전화번호가_없으면_발송하지_않는다(): void
+    public function test_전화번호가_없으면_예외를_던지고_발송하지_않는다(): void
     {
         Bus::fake();
         $guest = new GuestNotifiable('guest@example.com', '홍길동', 'ko');
 
         // data 에 전화번호 없음 + 게스트라 mobile 속성 없음
-        $this->makeDriver($this->fakeTemplate())->send($guest, $this->notification([]));
+        $this->expectException(NotificationSendSkippedException::class);
 
-        Bus::assertNotDispatched(SendMessageJob::class);
+        try {
+            $this->makeDriver($this->fakeTemplate())->send($guest, $this->notification([]));
+        } finally {
+            Bus::assertNotDispatched(SendMessageJob::class);
+        }
     }
 
     public function test_짧은_본문은_sm_s로_긴_본문은_lm_s로_보낸다(): void
@@ -248,15 +303,19 @@ class SmsChannelDriverTest extends PluginTestCase
         $this->assertSame('제목', $lmsBuilder->calls[0]['subject'], 'LMS 는 subject(코어 제목)를 재사용해야 한다.');
     }
 
-    public function test_본문이_비어있으면_발송하지_않는다(): void
+    public function test_본문이_비어있으면_예외를_던지고_발송하지_않는다(): void
     {
         Bus::fake();
         $member = User::factory()->create(['mobile' => '01011112222']);
 
-        $this->makeDriver($this->fakeTemplate(['subject' => '', 'body' => '   ']))
-            ->send($member, $this->notification());
+        $this->expectException(NotificationSendSkippedException::class);
 
-        Bus::assertNotDispatched(SendMessageJob::class);
+        try {
+            $this->makeDriver($this->fakeTemplate(['subject' => '', 'body' => '   ']))
+                ->send($member, $this->notification());
+        } finally {
+            Bus::assertNotDispatched(SendMessageJob::class);
+        }
     }
 
     public function test_generic_notification이_아니면_무시한다(): void

@@ -6,11 +6,13 @@ use App\Models\NotificationTemplate;
 use App\Models\User;
 use App\Notifications\GenericNotification;
 use App\Notifications\GuestNotifiable;
+use App\Services\NotificationDefinitionService;
 use App\Services\NotificationTemplateService;
 use App\Services\PluginSettingsService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
+use Plugins\Sirsoft\MessageBizppurio\Exceptions\NotificationSendSkippedException;
 use Plugins\Sirsoft\MessageBizppurio\Jobs\SendMessageJob;
 use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioNotificationBinding;
@@ -125,8 +127,13 @@ class AlimtalkChannelDriverTest extends PluginTestCase
             ->with('sirsoft-message_bizppurio', 'is_test_mode', true)
             ->andReturn($isTestMode);
 
+        // 스킵 예외 메시지의 알림 유형 라벨 조회 — 정의 없음(null)이면 resolveTypeLabel 이 코드값으로 폴백.
+        $definitionService = Mockery::mock(NotificationDefinitionService::class);
+        $definitionService->shouldReceive('resolve')->andReturn(null);
+
         return new AlimtalkChannelDriver(
             $templateService,
+            $definitionService,
             $this->fakeBindings($binding),
             $builder ?? $this->spyBuilder(),
             new BizppurioDispatchRepository,
@@ -173,28 +180,94 @@ class AlimtalkChannelDriverTest extends PluginTestCase
         return new GenericNotification('order_confirmed', 'sirsoft-ecommerce', $data, 'module', 'sirsoft-ecommerce');
     }
 
-    public function test_연결된_템플릿이_없으면_발송하지_않는다(): void
+    public function test_연결된_템플릿이_없으면_예외를_던지고_발송하지_않는다(): void
     {
         Bus::fake();
         $member = User::factory()->create(['mobile' => '010-1234-5678']);
 
-        // binding = null → 미연결 → skip
-        $this->makeDriver($this->fakeTemplate(), null)->send($member, $this->notification());
+        // binding = null → 미연결 → NotificationSendSkippedException(코어가 실패로 기록하도록)
+        $this->expectException(NotificationSendSkippedException::class);
 
-        Bus::assertNotDispatched(SendMessageJob::class);
-        $this->assertDatabaseCount('bizppurio_dispatches', 0);
+        try {
+            $this->makeDriver($this->fakeTemplate(), null)->send($member, $this->notification());
+        } finally {
+            Bus::assertNotDispatched(SendMessageJob::class);
+            $this->assertDatabaseCount('bizppurio_dispatches', 0);
+        }
     }
 
-    public function test_카카오_템플릿_내용_조회_실패시_발송하지_않는다(): void
+    public function test_스킵_예외_메시지는_알림_유형_코드값_대신_사람이_읽는_이름을_사용한다(): void
     {
         Bus::fake();
         $member = User::factory()->create(['mobile' => '010-1234-5678']);
 
-        // binding 은 있으나 카카오 상세조회 실패(고아·장애) → 알림톡 본문 소스 없음 → skip
-        $this->makeDriver($this->fakeTemplate(), $this->binding(), kakao: null)
-            ->send($member, $this->notification());
+        $definition = Mockery::mock(\App\Models\NotificationDefinition::class);
+        $definition->shouldReceive('getLocalizedName')->andReturn('회원가입 환영');
 
-        Bus::assertNotDispatched(SendMessageJob::class);
+        $definitionService = Mockery::mock(\App\Services\NotificationDefinitionService::class);
+        $definitionService->shouldReceive('resolve')->with('order_confirmed')->andReturn($definition);
+
+        $templateService = Mockery::mock(\App\Services\NotificationTemplateService::class);
+        $templateService->shouldReceive('resolve')->with(Mockery::any(), 'alimtalk')->andReturn(null);
+
+        $pluginSettings = Mockery::mock(\App\Services\PluginSettingsService::class);
+        $pluginSettings->shouldReceive('get')->andReturn(true);
+
+        $driver = new AlimtalkChannelDriver(
+            $templateService,
+            $definitionService,
+            $this->fakeBindings(null),
+            $this->spyBuilder(),
+            new BizppurioDispatchRepository,
+            new DispatchLinkContext,
+            $this->fakeKakaoContent($this->kakaoContent()),
+            new AlimtalkPayloadMapper,
+            $pluginSettings,
+        );
+
+        try {
+            $driver->send($member, $this->notification());
+            $this->fail('NotificationSendSkippedException 가 발생해야 한다.');
+        } catch (NotificationSendSkippedException $e) {
+            $this->assertStringContainsString('회원가입 환영', $e->getMessage(), '코드값(order_confirmed) 대신 사람이 읽는 이름이 노출돼야 한다.');
+            $this->assertStringNotContainsString('order_confirmed', $e->getMessage());
+        }
+    }
+
+    public function test_카카오_템플릿_내용_조회_실패시_예외를_던지고_발송하지_않는다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        // binding 은 있으나 카카오 상세조회 실패(고아·장애) → 알림톡 본문 소스 없음
+        // → NotificationSendSkippedException(코어가 실패로 기록하도록)
+        $this->expectException(NotificationSendSkippedException::class);
+
+        try {
+            $this->makeDriver($this->fakeTemplate(), $this->binding(), kakao: null)
+                ->send($member, $this->notification());
+        } finally {
+            Bus::assertNotDispatched(SendMessageJob::class);
+        }
+    }
+
+    public function test_카카오_치환_결과_본문이_비어있으면_예외를_던지고_발송하지_않는다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        // 카카오 templateContent 가 치환 후에도 빈 문자열이면 발송 불가
+        $this->expectException(NotificationSendSkippedException::class);
+
+        try {
+            $this->makeDriver(
+                $this->fakeTemplate(),
+                $this->binding(),
+                kakao: ['templateCode' => 'TW_1234', 'templateContent' => '   '],
+            )->send($member, $this->notification());
+        } finally {
+            Bus::assertNotDispatched(SendMessageJob::class);
+        }
     }
 
     public function test_코어_alimtalk_템플릿이_없어도_카카오_내용으로_발송한다(): void
@@ -400,15 +473,19 @@ class AlimtalkChannelDriverTest extends PluginTestCase
         $this->assertArrayHasKey('templatecode', $payload['content']['at'] ?? [], 'templatecode 는 다른 컬럼에 없으므로 남아있어야 한다.');
     }
 
-    public function test_전화번호가_없으면_발송하지_않는다(): void
+    public function test_전화번호가_없으면_예외를_던지고_발송하지_않는다(): void
     {
         Bus::fake();
         $guest = new GuestNotifiable('guest@example.com', '홍길동', 'ko');
 
-        $this->makeDriver($this->fakeTemplate(), $this->binding())
-            ->send($guest, $this->notification(['name' => '홍길동']));
+        $this->expectException(NotificationSendSkippedException::class);
 
-        Bus::assertNotDispatched(SendMessageJob::class);
+        try {
+            $this->makeDriver($this->fakeTemplate(), $this->binding())
+                ->send($guest, $this->notification(['name' => '홍길동']));
+        } finally {
+            Bus::assertNotDispatched(SendMessageJob::class);
+        }
     }
 
     public function test_generic_notification이_아니면_무시한다(): void
