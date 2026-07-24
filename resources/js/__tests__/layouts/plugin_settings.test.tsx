@@ -79,12 +79,42 @@ describe('plugin_settings.json — 섹션', () => {
         expect(introIdx).toBeLessThan(smsIdx);
     });
 
+    it('채널별 준비 목록은 PC(lg 이상) 2단, 모바일 1단 그리드로 배치된다', () => {
+        // 문자·카카오 블록을 감싼 컨테이너가 grid grid-cols-1 lg:grid-cols-2 여야 한다.
+        // sms_label 을 담은 블록의 부모(구분선 아래 컨테이너)에서 grid 클래스를 확인.
+        const notice = findById(root, 'preparation_notice');
+        const raw = JSON.stringify(notice);
+        // 세로 1단 고정(flex-col) 이 아니라 반응형 grid 여야 한다.
+        expect(raw).toContain('grid-cols-1');
+        expect(raw).toContain('lg:grid-cols-2');
+    });
+
+    it('문자·카카오 준비 블록은 카드(배경+테두리)로 감싸고 채널 아이콘을 라벨에 붙인다', () => {
+        const notice = findById(root, 'preparation_notice');
+        const raw = JSON.stringify(notice);
+        // 각 열이 카드로 감싸짐 (다크모드 쌍 포함 solid 배경)
+        expect(raw).toContain('bg-blue-100');
+        expect(raw).toContain('dark:bg-blue-900');
+        // 채널별 아이콘 (문자=envelope, 카카오=comment-dots)
+        expect(raw).toContain('"envelope"');
+        expect(raw).toContain('"comment-dots"');
+    });
+
     it('검수 모드 카드에 is_test_mode Toggle 이 있다', () => {
         const card = findById(root, 'test_mode_card');
         expect(card).toBeTruthy();
         const raw = JSON.stringify(card);
         expect(raw).toContain('"Toggle"');
         expect(raw).toContain('is_test_mode');
+    });
+
+    it('검수 모드 카드에 검수/운영 계정 분리 권장 안내가 상시 노출된다', () => {
+        // 검수 켜짐/꺼짐과 무관하게(if 조건 없이) 카드 안에 계정 분리 권장 문구가 있어야 한다.
+        const card = findById(root, 'test_mode_card') as { if?: string } | null;
+        expect(card).toBeTruthy();
+        expect(card?.if).toBeUndefined(); // 카드 자체가 조건부가 아님 → 상시 노출
+        const raw = JSON.stringify(card);
+        expect(raw).toContain('settings.test_mode.account_notice');
     });
 
     it('운영 모드(검수 off) 경고 박스가 조건부로 존재한다', () => {

@@ -182,25 +182,25 @@
                                         ]
                                     },
                                     {
-                                        "comment": "구분선 아래 — 문자·카카오 채널별 사전 준비 목록",
+                                        "comment": "구분선 아래 — 문자·카카오 채널별 사전 준비 목록 (PC lg 이상 2단, 모바일 1단)",
                                         "type": "basic", "name": "Div",
-                                        "props": { "className": "mt-3 pt-3 border-t border-blue-100 dark:border-blue-900 flex flex-col gap-4" },
+                                        "props": { "className": "mt-3 pt-3 border-t border-blue-100 dark:border-blue-900 grid grid-cols-1 lg:grid-cols-2 gap-4" },
                                         "children": [
                                             {
-                                                "comment": "문자(SMS/LMS) — 라벨 + 발신번호 등록 1줄",
+                                                "comment": "문자(SMS/LMS) — 카드 + 아이콘 라벨 + 발신번호 등록 1줄",
                                                 "type": "basic", "name": "Div",
-                                                "props": { "className": "space-y-1" },
+                                                "props": { "className": "space-y-2 rounded-lg bg-blue-100 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 p-3" },
                                                 "children": [
-                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_label" },
+                                                    { "type": "basic", "name": "P", "props": { "className": "flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-100" }, "children": [ { "type": "basic", "name": "Icon", "props": { "name": "envelope", "size": "sm", "className": "text-blue-500 dark:text-blue-400" } }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_label" } ] },
                                                     { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.sms_sender" } ] }
                                                 ]
                                             },
                                             {
-                                                "comment": "카카오 알림톡 — 라벨 + 채널/템플릿/API키 3줄",
+                                                "comment": "카카오 알림톡 — 카드 + 아이콘 라벨 + 채널/템플릿/API키 3줄",
                                                 "type": "basic", "name": "Div",
-                                                "props": { "className": "space-y-1" },
+                                                "props": { "className": "space-y-2 rounded-lg bg-blue-100 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 p-3" },
                                                 "children": [
-                                                    { "type": "basic", "name": "P", "props": { "className": "text-sm font-semibold text-blue-900 dark:text-blue-100" }, "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_label" },
+                                                    { "type": "basic", "name": "P", "props": { "className": "flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-100" }, "children": [ { "type": "basic", "name": "Icon", "props": { "name": "comment-dots", "size": "sm", "className": "text-blue-500 dark:text-blue-400" } }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_label" } ] },
                                                     { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_channel" } ] },
                                                     { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_template" } ] },
                                                     { "type": "basic", "name": "P", "props": { "className": "flex gap-2 ml-1 text-sm text-blue-800 dark:text-blue-200 leading-relaxed" }, "children": [ { "type": "basic", "name": "Span", "props": { "className": "text-blue-400 dark:text-blue-500 flex-shrink-0" }, "text": "•" }, { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.settings.preparation.kakao_apikey" } ] }
@@ -304,6 +304,12 @@
                                                         "name": "P",
                                                         "props": { "className": "form-hint" },
                                                         "text": "$t:sirsoft-message_bizppurio.settings.test_mode.hint"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": { "className": "form-hint" },
+                                                        "text": "$t:sirsoft-message_bizppurio.settings.test_mode.account_notice"
                                                     }
                                                 ]
                                             },

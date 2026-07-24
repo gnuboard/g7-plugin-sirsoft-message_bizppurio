@@ -10,7 +10,8 @@
     "save_failed": "Failed to save settings.",
     "test_mode": {
       "label": "Test Mode",
-      "hint": "In test mode, messages are sent to the Bizppurio inspection (dev) domain. Turn it off to send through the production domain."
+      "hint": "In test mode, messages are sent to the Bizppurio inspection domain. Turn it off to send through the production domain.",
+      "account_notice": "We recommend using separate Bizppurio accounts for inspection and production."
     },
     "live_mode_warning_title": "Sending in production",
     "live_mode_warning_body": "Test mode is off, so real SMS and alimtalk messages are sent to actual customers and sending fees are charged. Keep test mode on while inspecting.",

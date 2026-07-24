@@ -41,6 +41,7 @@ effects:
   # 섹션 구조
   - info_panel_test_mode_api_sending_report_sections_present
   - test_mode_card_has_is_test_mode_toggle
+  - test_mode_card_shows_separate_account_notice_always
   - live_mode_warning_shown_when_test_mode_off
   # 입력 필드
   - five_input_fields_bound_by_name
