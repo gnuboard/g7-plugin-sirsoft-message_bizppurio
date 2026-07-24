@@ -40,9 +40,10 @@ class BizppurioWebhookTest extends PluginTestCase
      *
      * @param  string  $refkey  우리 부여 키
      * @param  string  $channel  채널
+     * @param  array<string, mixed>|null  $requestPayload  발송 시점 요청 payload (resend 포함 여부 검증용)
      * @return BizppurioDispatch
      */
-    private function seedDispatch(string $refkey, string $channel = 'sms'): BizppurioDispatch
+    private function seedDispatch(string $refkey, string $channel = 'sms', ?array $requestPayload = null): BizppurioDispatch
     {
         return BizppurioDispatch::create([
             'refkey' => $refkey,
@@ -52,6 +53,7 @@ class BizppurioWebhookTest extends PluginTestCase
             'notification_type' => 'welcome',
             'status' => DispatchStatus::Sent->value,
             'source' => 'auto',
+            'request_payload' => $requestPayload,
             'sent_at' => now(),
         ]);
     }
@@ -245,5 +247,73 @@ class BizppurioWebhookTest extends PluginTestCase
         $this->withServerVariables(['REMOTE_ADDR' => self::ALLOWED_IP])
             ->postJson(self::ENDPOINT, ['REFKEY' => 'ref_noauth', 'RESULT' => '4100'])
             ->assertStatus(200);
+    }
+
+    /**
+     * 대체발송(SMS 대체발송)을 요청하지 않은 발송건(request_payload 에 resend 없음)은,
+     * webhook 응답에 TELRES/KAORES 값이 채워져 와도 fallback_status 가 null 로 남아야 한다.
+     *
+     * 비즈뿌리오는 대체발송 미요청 건에도 TELRES="0" 같은 값을 채워 보내므로(실서버 관측:
+     * alimtalk 대체발송 OFF 인데 결과 화면에 SMS 대체발송 뱃지가 표시된 회귀), webhook 값
+     * 존재 여부만으로 판단하면 안 되고 우리가 실제로 요청했는지(request_payload)를 봐야 한다.
+     *
+     * @scenario source=webhook,ip=allowed,result=success,fallback_requested=false
+     *
+     * @effects fallback_status_remains_null_when_not_requested
+     */
+    public function test_fallback_status_stays_null_when_resend_was_not_requested(): void
+    {
+        $dispatch = $this->seedDispatch(
+            'ref_no_resend_requested',
+            DispatchChannel::Alimtalk->value,
+            ['account' => 'sirsoft', 'content' => ['at' => ['templatecode' => 'tpl_1']]],
+        );
+
+        $this->withServerVariables(['REMOTE_ADDR' => self::ALLOWED_IP])
+            ->postJson(self::ENDPOINT, [
+                'REFKEY' => 'ref_no_resend_requested',
+                'RESULT' => '7000',
+                'MEDIA' => 'KAT',
+                'TELRES' => '0',
+                'KAORES' => '0',
+            ])
+            ->assertStatus(200);
+
+        $dispatch->refresh();
+        $this->assertSame(DispatchStatus::Success, $dispatch->status);
+        $this->assertNull($dispatch->fallback_status);
+    }
+
+    /**
+     * 대체발송을 실제로 요청한 발송건(request_payload 에 resend 있음)은 webhook TELRES 값을
+     * fallback_status 에 정상 반영한다.
+     *
+     * @scenario source=webhook,ip=allowed,result=balance_low,fallback_requested=true
+     *
+     * @effects fallback_status_set_when_resend_was_requested
+     */
+    public function test_fallback_status_set_when_resend_was_requested(): void
+    {
+        $dispatch = $this->seedDispatch(
+            'ref_resend_requested',
+            DispatchChannel::Alimtalk->value,
+            [
+                'account' => 'sirsoft',
+                'content' => ['at' => ['templatecode' => 'tpl_1']],
+                'resend' => ['first' => 'sms'],
+            ],
+        );
+
+        $this->withServerVariables(['REMOTE_ADDR' => self::ALLOWED_IP])
+            ->postJson(self::ENDPOINT, [
+                'REFKEY' => 'ref_resend_requested',
+                'RESULT' => '7436',
+                'MEDIA' => 'KAT',
+                'TELRES' => '4100',
+            ])
+            ->assertStatus(200);
+
+        $dispatch->refresh();
+        $this->assertSame('4100', $dispatch->fallback_status);
     }
 }

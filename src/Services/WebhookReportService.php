@@ -10,6 +10,7 @@ use App\Services\PluginSettingsService;
 use Plugins\Sirsoft\MessageBizppurio\Concerns\PreventsReplayWebhook;
 use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
 use Plugins\Sirsoft\MessageBizppurio\Enums\ResultCategory;
+use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
 use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRepositoryInterface;
 
 /**
@@ -79,7 +80,7 @@ class WebhookReportService
             'media' => $report['MEDIA'] ?? null,
             'result_code' => $resultCode,
             'result_message' => $this->resolver->reason($resultCode),
-            'fallback_status' => $this->resolveFallbackStatus($report),
+            'fallback_status' => $this->resolveFallbackStatus($report, $dispatch),
             'reported_at' => now(),
             'raw_payload' => $report['raw'] ?? $report,
         ]);
@@ -131,11 +132,22 @@ class WebhookReportService
     /**
      * 대체발송 결과를 해석합니다 (webhook TELRES/KAORES).
      *
+     * 비즈뿌리오는 대체발송 미요청 건에도 TELRES/KAORES 에 "0" 같은 값을 채워 보내므로
+     * (실측), webhook 응답값만으로는 대체발송 발생 여부를 판단할 수 없다. 우리가 발송
+     * 시점에 실제로 대체발송을 요청했는지(`request_payload` 의 resend/recontent 존재)를
+     * 먼저 확인해, 요청하지 않았으면 webhook 값과 무관하게 null 을 반환한다.
+     *
      * @param  array<string, mixed>  $report  리포트
+     * @param  BizppurioDispatch  $dispatch  webhook 매칭된 발송 이력 (발송 시점 요청 payload 보유)
      * @return string|null 대체발송 결과 코드 또는 null
      */
-    private function resolveFallbackStatus(array $report): ?string
+    private function resolveFallbackStatus(array $report, BizppurioDispatch $dispatch): ?string
     {
+        $requestPayload = $dispatch->request_payload ?? [];
+        if (! isset($requestPayload['resend'])) {
+            return null;
+        }
+
         $telres = $report['TELRES'] ?? null;
         $kaores = $report['KAORES'] ?? null;
 
