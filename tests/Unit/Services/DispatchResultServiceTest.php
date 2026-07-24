@@ -90,6 +90,24 @@ class DispatchResultServiceTest extends PluginTestCase
         $this->assertNotNull($results[40]['status_label']); // 상태 라벨은 있음(발송중)
     }
 
+    public function test_검수_모드_스냅샷이_결과에_포함된다(): void
+    {
+        $this->linkedDispatch(70, ['is_test_mode' => true]);
+
+        $results = $this->service->resultsForLogIds([70]);
+
+        $this->assertTrue($results[70]['is_test_mode']);
+    }
+
+    public function test_검수_모드_스냅샷이_없는_과거_이력은_null이다(): void
+    {
+        $this->linkedDispatch(71, ['is_test_mode' => null]);
+
+        $results = $this->service->resultsForLogIds([71]);
+
+        $this->assertNull($results[71]['is_test_mode']);
+    }
+
     public function test_매칭되지_않는_로그id는_맵에서_빠진다(): void
     {
         $this->linkedDispatch(50);

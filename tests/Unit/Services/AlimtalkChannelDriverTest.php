@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\GenericNotification;
 use App\Notifications\GuestNotifiable;
 use App\Services\NotificationTemplateService;
+use App\Services\PluginSettingsService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
@@ -102,12 +103,14 @@ class AlimtalkChannelDriverTest extends PluginTestCase
      * 템플릿·binding·빌더를 조합한 driver 를 만듭니다.
      *
      * @param  array<string, mixed>|null  $kakao  카카오 상세조회 내용 (null=조회 실패)
+     * @param  bool  $isTestMode  검수 모드 설정값 (이력 스냅샷 검증용)
      */
     private function makeDriver(
         ?NotificationTemplate $template,
         ?BizppurioNotificationBinding $binding,
         ?MessagePayloadBuilder $builder = null,
         array|false|null $kakao = false,
+        bool $isTestMode = true,
     ): AlimtalkChannelDriver {
         $templateService = Mockery::mock(NotificationTemplateService::class);
         $templateService->shouldReceive('resolve')
@@ -117,6 +120,11 @@ class AlimtalkChannelDriverTest extends PluginTestCase
         // $kakao 기본값 false = "기본 카카오 내용 제공"(대부분 테스트). null = 조회 실패.
         $content = $kakao === false ? $this->kakaoContent() : $kakao;
 
+        $pluginSettings = Mockery::mock(PluginSettingsService::class);
+        $pluginSettings->shouldReceive('get')
+            ->with('sirsoft-message_bizppurio', 'is_test_mode', true)
+            ->andReturn($isTestMode);
+
         return new AlimtalkChannelDriver(
             $templateService,
             $this->fakeBindings($binding),
@@ -125,6 +133,7 @@ class AlimtalkChannelDriverTest extends PluginTestCase
             new DispatchLinkContext,
             $this->fakeKakaoContent($content),
             new AlimtalkPayloadMapper,
+            $pluginSettings,
         );
     }
 
@@ -353,6 +362,44 @@ class AlimtalkChannelDriverTest extends PluginTestCase
         $this->assertSame('order_confirmed', $dispatch->notification_type);
     }
 
+    public function test_발송_시_실제_전송_payload가_이력에_저장된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+        $builder = $this->spyBuilder();
+
+        $this->makeDriver($this->fakeTemplate(), $this->binding(), $builder)
+            ->send($member, $this->notification());
+
+        $dispatch = BizppurioDispatch::first();
+        $this->assertNotNull($dispatch->request_payload, '결함① — 실제 비즈뿌리오 전송 payload 가 이력에 저장돼야 한다.');
+        $this->assertSame('TW_1234', $dispatch->request_payload['templatecode'] ?? null);
+    }
+
+    public function test_이력_저장_payload에서_개인식별_정보는_제외된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        // 실제 MessagePayloadBuilder(스파이 아님)로 진짜 조립 로직을 태워야 forHistory() 제외
+        // 규칙(to/refkey/type/message 제거)을 검증할 수 있다.
+        $pluginSettings = Mockery::mock(PluginSettingsService::class);
+        $pluginSettings->shouldReceive('get')->andReturn('');
+        $realBuilder = new MessagePayloadBuilder($pluginSettings);
+
+        $this->makeDriver($this->fakeTemplate(), $this->binding(), $realBuilder)
+            ->send($member, $this->notification());
+
+        $dispatch = BizppurioDispatch::first();
+        $payload = $dispatch->request_payload;
+
+        $this->assertArrayNotHasKey('to', $payload, 'to 는 to_number 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertArrayNotHasKey('refkey', $payload, 'refkey 는 refkey 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertArrayNotHasKey('type', $payload, 'type 은 channel 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertArrayNotHasKey('message', $payload['content']['at'] ?? [], 'message 는 content 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertArrayHasKey('templatecode', $payload['content']['at'] ?? [], 'templatecode 는 다른 컬럼에 없으므로 남아있어야 한다.');
+    }
+
     public function test_전화번호가_없으면_발송하지_않는다(): void
     {
         Bus::fake();
@@ -385,5 +432,27 @@ class AlimtalkChannelDriverTest extends PluginTestCase
 
         Bus::assertDispatched(SendMessageJob::class);
         $this->assertDatabaseCount('bizppurio_dispatches', 1);
+    }
+
+    public function test_검수_모드_설정값이_이력에_스냅샷으로_기록된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        $this->makeDriver($this->fakeTemplate(), $this->binding(), isTestMode: true)
+            ->send($member, $this->notification());
+
+        $this->assertTrue(BizppurioDispatch::first()->is_test_mode);
+    }
+
+    public function test_운영_모드_설정값도_이력에_스냅샷으로_기록된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        $this->makeDriver($this->fakeTemplate(), $this->binding(), isTestMode: false)
+            ->send($member, $this->notification());
+
+        $this->assertFalse(BizppurioDispatch::first()->is_test_mode);
     }
 }

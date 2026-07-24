@@ -93,6 +93,77 @@ class MessagePayloadBuilderTest extends PluginTestCase
         $this->assertSame('확인', $at['button'][0]['name']);
     }
 
+    public function test_forHistory는_sms_payload에서_to_refkey_type_message를_제외한다(): void
+    {
+        $builder = $this->makeBuilder([
+            'bizppurio_id' => 'acct01',
+            'sender_number' => '07012345678',
+        ]);
+
+        $payload = $builder->buildSms('01011112222', '테스트 본문', 'ref123');
+        $history = $builder->forHistory($payload);
+
+        $this->assertArrayNotHasKey('to', $history);
+        $this->assertArrayNotHasKey('refkey', $history);
+        $this->assertArrayNotHasKey('type', $history);
+        $this->assertArrayNotHasKey('message', $history['content']['sms']);
+        // 다른 컬럼에 없는 값은 유지돼야 한다.
+        $this->assertSame('acct01', $history['account']);
+        $this->assertSame('07012345678', $history['from']);
+    }
+
+    public function test_forHistory는_lms_payload에서_subject는_유지하고_message만_제외한다(): void
+    {
+        $builder = $this->makeBuilder([
+            'bizppurio_id' => 'acct01',
+            'sender_number' => '07012345678',
+        ]);
+
+        $payload = $builder->buildLms('01011112222', '긴 본문', 'ref456', '제목');
+        $history = $builder->forHistory($payload);
+
+        $this->assertArrayNotHasKey('message', $history['content']['lms']);
+        $this->assertSame('제목', $history['content']['lms']['subject'], 'subject 는 다른 컬럼에 없으므로 유지돼야 한다.');
+    }
+
+    public function test_forHistory는_알림톡_payload에서_message만_제외하고_버튼_등_요소는_유지한다(): void
+    {
+        $builder = $this->makeBuilder([
+            'bizppurio_id' => 'acct01',
+            'sender_number' => '07012345678',
+            'sender_key' => 'senderkey40',
+        ]);
+
+        $payload = $builder->buildAlimtalk('01011112222', 'TW_1234', '알림톡 본문', 'ref999', [
+            'button' => [['name' => '확인', 'type' => 'WL', 'url_mobile' => 'https://x']],
+        ]);
+        $history = $builder->forHistory($payload);
+
+        $at = $history['content']['at'];
+        $this->assertArrayNotHasKey('message', $at, '치환된 본문은 content 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertSame('senderkey40', $at['senderkey'], 'senderkey 는 다른 컬럼에 없으므로 유지돼야 한다.');
+        $this->assertSame('TW_1234', $at['templatecode'], 'templatecode 는 다른 컬럼에 없으므로 유지돼야 한다.');
+        $this->assertSame('확인', $at['button'][0]['name'], '버튼(요소)은 결함② URL 검증에 필요하므로 유지돼야 한다.');
+    }
+
+    public function test_forHistory는_대체발송_recontent_message도_제외한다(): void
+    {
+        $builder = $this->makeBuilder([
+            'bizppurio_id' => 'acct01',
+            'sender_number' => '07012345678',
+            'sender_key' => 'senderkey40',
+        ]);
+
+        $payload = $builder->buildAlimtalk('01011112222', 'TW_1234', '알림톡 본문', 'ref999');
+        $payload['resend'] = ['first' => 'sms'];
+        $payload['recontent'] = ['sms' => ['message' => '대체 SMS 본문']];
+
+        $history = $builder->forHistory($payload);
+
+        $this->assertArrayNotHasKey('message', $history['recontent']['sms'], '대체발송 본문도 개인식별 텍스트이므로 제외돼야 한다.');
+        $this->assertSame(['first' => 'sms'], $history['resend'], 'resend 구조 자체는 다른 컬럼에 없으므로 유지돼야 한다.');
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();

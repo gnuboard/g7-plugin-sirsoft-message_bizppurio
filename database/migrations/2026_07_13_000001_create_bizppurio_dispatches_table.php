@@ -32,6 +32,7 @@ return new class extends Migration
             $table->foreignId('to_user_id')->nullable()->comment('회원이면 users FK, 비회원이면 null')
                 ->constrained('users', indexName: 'bizppurio_dispatch_user_fk')->nullOnDelete();
             $table->text('content')->comment('발송 본문(SMS) 또는 템플릿 참조(알림톡)');
+            $table->json('request_payload')->nullable()->comment('실제 비즈뿌리오 API 전송 요청 payload (개인식별 정보 제외 — to/refkey/type/본문 텍스트는 다른 컬럼과 중복이라 제외, account/from/senderkey/templatecode/버튼 등 요소만 저장)');
             $table->string('notification_type', 100)->nullable()->comment('코어 notification_definitions.type 참조 (어느 알림). 수동발송 시 null');
             $table->unsignedBigInteger('notification_log_id')->nullable()->comment('코어 notification_logs.id 연결 표식 (A-2). 코어 알림 발송 이력 화면에서 결과를 이 행에 붙이기 위한 매칭 키. 코어 테이블 무수정 — 연결 표식은 비즈뿌리오 쪽에만 둔다');
             $table->string('status', 20)->default('pending')->comment('발송 상태: pending / sent / success / failed (DispatchStatus enum)');
@@ -39,6 +40,7 @@ return new class extends Migration
             $table->string('result_message', 255)->nullable()->comment('결과 사유 원본 (result_codes lang 해석 전)');
             $table->string('fallback_status', 20)->nullable()->comment('대체발송 결과: 성공/실패/없음 (webhook TELRES)');
             $table->string('source', 10)->default('auto')->comment('발송 출처: auto / manual / bulk (DispatchSource enum, 1차 auto)');
+            $table->boolean('is_test_mode')->nullable()->comment('발송 시점 검수 모드 여부 (null=컬럼 신설 이전 이력)');
             $table->timestamp('sent_at')->nullable()->comment('발송 시각');
             $table->timestamp('reported_at')->nullable()->comment('webhook 리포트 수신 시각 (replay 멱등 판정)');
             $table->json('raw_payload')->nullable()->comment('webhook 원본 페이로드');

@@ -5,9 +5,12 @@ namespace Plugins\Sirsoft\MessageBizppurio;
 use App\Enums\ExtensionOwnerType;
 use App\Extension\AbstractPlugin;
 use App\Extension\Helpers\ExtensionMenuSyncHelper;
+use App\Extension\Helpers\NotificationSyncHelper;
 use App\Extension\HookListenerRegistrar;
 use App\Extension\ModuleManager;
+use App\Models\NotificationDefinition;
 use Database\Seeders\NotificationDefinitionSeeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\LinkNotificationLogListener;
@@ -86,6 +89,14 @@ class Plugin extends AbstractPlugin
      * 를 호출해 잔재를 청소한다. 재활성화 시 아무 메뉴도 만들지 않으므로 정상 무메뉴 상태로
      * 수렴한다(멱등). 자식 메뉴 + role_menus 피벗은 helper 가 cascade 처리.
      *
+     * SeedChannelTemplatesListener 의 HookListenerRegistrar 등록 이력 캐시를 함께 지운다 —
+     * activate() 가 register() 로 등록한 뒤(process-wide idempotency 캐시, source::class 키),
+     * deactivate/uninstall 후 재활성화해도 이 캐시가 "이미 등록됨"으로 남아있으면 재등록이
+     * 조용히 skip 되어 재시딩 시 sms·alimtalk 채널이 다시 붙지 않는다(회귀). 코어
+     * HookListenerRegistrar 에는 특정 키 1건만 지우는 API 가 없고(clear() 는 전체 초기화라
+     * 다른 확장의 등록 상태까지 날아감), 코어 수정 없이 이 플러그인 내부에서만 해결하기
+     * 위해 리플렉션으로 private static $registered 캐시에서 이 키만 직접 제거한다.
+     *
      * @return bool 비활성화 성공 여부
      */
     public function deactivate(): bool
@@ -96,19 +107,91 @@ class Plugin extends AbstractPlugin
             currentSlugs: [],
         );
 
+        $this->forgetSeedChannelTemplatesListenerRegistration();
+
         return true;
     }
 
     /**
-     * 플러그인 제거 — 메뉴 잔재 안전망 (정상 흐름은 deactivate 가 먼저 처리).
+     * HookListenerRegistrar::$registered 캐시에서 SeedChannelTemplatesListener 등록 이력만 제거합니다.
+     *
+     * 코어 HookListenerRegistrar 는 개별 키 삭제 API 를 제공하지 않으므로(clear() 는 전체
+     * 초기화), 코어를 수정하지 않고 이 캐시를 조작하기 위해 리플렉션을 사용한다. 실패해도
+     * (리플렉션 예외 등) 치명적이지 않으므로 조용히 무시한다 — 최악의 경우 이번 재활성화만
+     * 채널 재시딩이 안 붙고, 운영자가 다시 활성화하면 정상화된다.
+     */
+    private function forgetSeedChannelTemplatesListenerRegistration(): void
+    {
+        try {
+            $ref = new \ReflectionClass(HookListenerRegistrar::class);
+            $prop = $ref->getProperty('registered');
+            $registered = $prop->getValue();
+            $key = $this->getIdentifier().'::'.SeedChannelTemplatesListener::class;
+            unset($registered[$key]);
+            $prop->setValue(null, $registered);
+        } catch (\Throwable $e) {
+            Log::warning('[sirsoft-message_bizppurio] SeedChannelTemplatesListener 등록 캐시 초기화 실패', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * 플러그인 제거 — 메뉴 잔재 안전망(정상 흐름은 deactivate 가 먼저 처리) + sms·alimtalk 채널 잔재 정리.
+     *
+     * SeedChannelTemplatesListener 가 코어/게시판/이커머스 소유 알림 정의에 필터 훅으로 끼워넣은
+     * sms·alimtalk template 은, 그 정의가 우리 소유가 아니므로 PluginManager 의 범용 알림 정의
+     * 정리(cleanupStaleDefinitions('plugin', ...))에 걸리지 않는다. 코어는 이 채널의 존재나
+     * 소유자를 몰라야 하므로, 코어를 수정하지 않고 우리가 직접 우리 채널 상수 기준으로 정리한다.
+     *
+     * "데이터도 함께 삭제" 옵션과 무관하게 항상 정리한다 — sms·alimtalk 은 이 플러그인 없이는
+     * 발송이 불가능한 죽은 설정이라 보존할 가치가 없고, 재설치 시 activate() 가 재시딩하며
+     * 자동으로 복원된다.
      *
      * @return bool 제거 성공 여부
      */
     public function uninstall(): bool
     {
         $this->deactivate();
+        $this->cleanupChannelContributions();
 
         return true;
+    }
+
+    /**
+     * sms·alimtalk 채널 template 및 definitions.channels 배열에서 우리 채널 잔재를 정리합니다.
+     *
+     * 삭제 대상 채널은 우리가 이미 아는 채널 상수(RegisterNotificationChannelsListener::CHANNEL_IDS)
+     * 이므로, 각 정의가 원래 어떤 채널로 구성돼 있었는지 사전 지식 없이 "현재 DB 채널 목록 −
+     * 우리 채널" 만으로 남길 목록을 계산할 수 있다. template 삭제는 코어 공개 메서드
+     * NotificationSyncHelper::cleanupStaleTemplates() 를 그대로 사용해 로깅·모델 이벤트 등
+     * 코어 도메인 규칙을 그대로 따른다.
+     */
+    private function cleanupChannelContributions(): void
+    {
+        $myChannels = RegisterNotificationChannelsListener::CHANNEL_IDS;
+        $helper = app(NotificationSyncHelper::class);
+
+        $definitionIds = DB::table('notification_templates')
+            ->whereIn('channel', $myChannels)
+            ->distinct()
+            ->pluck('definition_id');
+
+        foreach ($definitionIds as $definitionId) {
+            $current = DB::table('notification_templates')
+                ->where('definition_id', $definitionId)
+                ->pluck('channel')
+                ->all();
+            $keep = array_values(array_diff($current, $myChannels));
+
+            $helper->cleanupStaleTemplates($definitionId, $keep);
+
+            $definition = NotificationDefinition::find($definitionId);
+            if ($definition) {
+                $definition->channels = $keep;
+                $definition->save();
+            }
+        }
     }
 
     /**

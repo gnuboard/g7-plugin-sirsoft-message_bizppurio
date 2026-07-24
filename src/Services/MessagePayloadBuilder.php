@@ -121,6 +121,34 @@ class MessagePayloadBuilder
     }
 
     /**
+     * 발송 payload 에서 발송 이력(request_payload) 저장용으로 개인식별 정보를 제거합니다.
+     *
+     * 이력 테이블에 이미 저장되는 필드(to→to_number, refkey→refkey, type→channel,
+     * content.{sms,lms,at}.message→content)는 완전 중복이므로 제외한다. 나머지(account/
+     * from/senderkey/templatecode/button 등 요소·resend/recontent)는 이력 테이블 어디에도
+     * 없고 발송 실패 원인 분석(결함①)·버튼 URL 검증(결함②)에 필요하므로 그대로 남긴다.
+     *
+     * @param  array<string, mixed>  $payload  buildSms/buildLms/buildAlimtalk 가 조립한 발송 payload
+     * @return array<string, mixed> 개인식별 정보를 제거한 이력 저장용 payload
+     */
+    public function forHistory(array $payload): array
+    {
+        unset($payload['to'], $payload['refkey'], $payload['type']);
+
+        foreach (['sms', 'lms', 'at'] as $channelKey) {
+            if (isset($payload['content'][$channelKey]['message'])) {
+                unset($payload['content'][$channelKey]['message']);
+            }
+        }
+
+        if (isset($payload['recontent']['sms']['message'])) {
+            unset($payload['recontent']['sms']['message']);
+        }
+
+        return $payload;
+    }
+
+    /**
      * 발송 계정(account = bizppurio_id)을 반환합니다.
      */
     private function account(): string

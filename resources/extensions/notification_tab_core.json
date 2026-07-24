@@ -49,7 +49,7 @@
           "name": "Div",
           "if": "{{['sms','alimtalk'].includes(_local.activeNotificationChannel ?? query.channel ?? '') && ((availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.readiness?.ready === false || (availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.is_test_mode === true)}}",
           "props": {
-            "className": "mt-4 mb-3"
+            "className": "mt-4 mb-3 space-y-2"
           },
           "children": [
             {
@@ -111,7 +111,7 @@
               "id": "bizppurio_banner_test_mode",
               "type": "basic",
               "name": "Div",
-              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.readiness?.ready !== false && (availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.is_test_mode === true}}",
+              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.is_test_mode === true}}",
               "props": {
                 "className": "flex-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700"
               },

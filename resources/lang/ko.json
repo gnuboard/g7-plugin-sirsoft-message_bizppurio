@@ -105,10 +105,11 @@
   "banner": {
     "not_ready": "발송에 필요한 설정이 완료되지 않았습니다.",
     "setup_action": "설정하기",
-    "test_mode": "테스트 모드입니다 — 실제 발송은 이뤄지지 않습니다."
+    "test_mode": "검수 모드입니다 — 실제 발송은 이뤄지지 않습니다."
   },
   "dispatch_result": {
     "column_header": "문자·알림톡 결과",
+    "inspection_label": "검수",
     "low_balance": "잔액 부족",
     "fallback": "SMS 대체발송 {status}",
     "detail_title": "문자·알림톡 발송 결과",

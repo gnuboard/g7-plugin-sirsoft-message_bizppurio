@@ -1,3 +1,5 @@
+// e2e:allow 검수 모드 배너(readiness 무관 노출)·배너 간격은 Chrome MCP로 알림톡 탭 실제 화면
+// 확인·수정까지 완료(2026-07-24). 정식 E2E는 비즈뿌리오 발송 인프라 의존이 커서 별도 계획에서 다룸.
 /**
  * 알림 설정 알림톡 탭 연동 UI 구조 검증 (Phase 6 재설계, §6-2)
  *
@@ -75,11 +77,27 @@ describe('binding UI — 상태 배너 + 안내 박스', () => {
         expect(cond).toContain('is_test_mode === true');
     });
 
+    it('빨강(설정 미완료)·노랑(검수 모드) 배너가 동시에 뜰 때 간격이 있다(회귀: 두 배너가 붙어 보이던 문제)', () => {
+        const banner = findById(bannerRoot, 'bizppurio_status_banner');
+        const className = (banner as { props?: { className?: string } }).props?.className ?? '';
+        expect(className).toMatch(/space-y-\d/);
+    });
+
     it('readiness 미충족 배너에 설정하기 이동 버튼이 있다', () => {
         const raw = JSON.stringify(findById(bannerRoot, 'bizppurio_banner_not_ready'));
         expect(raw).toContain('banner.not_ready');
         expect(raw).toContain('banner.setup_action');
         expect(raw).toContain('/admin/plugins/sirsoft-message_bizppurio/settings');
+    });
+
+    it('검수 모드 배너는 readiness 충족 여부와 무관하게 is_test_mode 만으로 노출된다', () => {
+        // readiness 실패(예: 알림톡 API 키 미설정) + 검수 모드가 동시에 참인 상황에서도
+        // 검수 안내가 가려지면 안 된다(회귀: 과거 readiness?.ready !== false 조건이 배너를 숨겼음).
+        const banner = findById(bannerRoot, 'bizppurio_banner_test_mode');
+        expect(banner).toBeTruthy();
+        const cond = (banner as { if?: string }).if ?? '';
+        expect(cond).not.toContain('readiness');
+        expect(cond).toContain('is_test_mode === true');
     });
 
     it('알림톡 탭 상시 안내 박스가 있다(무엇을 하는 화면인지)', () => {

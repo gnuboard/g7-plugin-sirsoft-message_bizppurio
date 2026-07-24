@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\BaseNotification;
 use App\Notifications\GenericNotification;
 use App\Services\NotificationTemplateService;
+use App\Services\PluginSettingsService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -49,6 +50,9 @@ use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificatio
  */
 class AlimtalkChannelDriver
 {
+    /** 플러그인 식별자 (manifest 와 일치) */
+    private const PLUGIN_IDENTIFIER = 'sirsoft-message_bizppurio';
+
     /** 알림 data 에서 비회원 전화번호를 싣는 표준 키 (SmsChannelDriver 와 동일 계약) */
     public const RECIPIENT_PHONE_KEY = '_recipient_phone';
 
@@ -60,6 +64,7 @@ class AlimtalkChannelDriver
      * @param  DispatchLinkContext  $linkContext  발송 사이클 refkey↔코어 로그 연결 컨텍스트(A-2)
      * @param  KakaoTemplateContentResolver  $kakaoContent  카카오 승인 템플릿 내용 조회·캐시(B안)
      * @param  AlimtalkPayloadMapper  $payloadMapper  카카오 내용 → 발송 형식 변환·치환(B안)
+     * @param  PluginSettingsService  $pluginSettings  검수 모드 여부 조회(이력 스냅샷용)
      */
     public function __construct(
         private readonly NotificationTemplateService $templateService,
@@ -69,6 +74,7 @@ class AlimtalkChannelDriver
         private readonly DispatchLinkContext $linkContext,
         private readonly KakaoTemplateContentResolver $kakaoContent,
         private readonly AlimtalkPayloadMapper $payloadMapper,
+        private readonly PluginSettingsService $pluginSettings,
     ) {}
 
     /**
@@ -148,9 +154,11 @@ class AlimtalkChannelDriver
             'to_name' => $notifiable->name ?? null,
             'to_user_id' => $this->resolveUserId($notifiable),
             'content' => $message,
+            'request_payload' => $this->payloadBuilder->forHistory($payload),
             'notification_type' => $type,
             'status' => DispatchStatus::Pending->value,
             'source' => DispatchSource::Auto->value,
+            'is_test_mode' => $this->isTestMode(),
             'sent_at' => now(),
         ]);
 
@@ -253,5 +261,17 @@ class AlimtalkChannelDriver
     private function generateRefkey(): string
     {
         return Str::random(32);
+    }
+
+    /**
+     * 검수 모드 여부를 반환합니다 (발송 이력 스냅샷용).
+     *
+     * 기본값(미설정)은 안전하게 검수(true)로 간주한다(BizppurioApiClient::baseUrl() 과 동일 정책).
+     *
+     * @return bool 검수 모드면 true
+     */
+    private function isTestMode(): bool
+    {
+        return (bool) $this->pluginSettings->get(self::PLUGIN_IDENTIFIER, 'is_test_mode', true);
     }
 }

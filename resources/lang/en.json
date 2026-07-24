@@ -9,12 +9,12 @@
     "save_success": "Settings saved.",
     "save_failed": "Failed to save settings.",
     "test_mode": {
-      "label": "Test Mode",
-      "hint": "In test mode, messages are sent to the Bizppurio inspection domain. Turn it off to send through the production domain.",
+      "label": "Inspection Mode",
+      "hint": "In inspection mode, messages are sent to the Bizppurio inspection domain. Turn it off to send through the production domain.",
       "account_notice": "We recommend using separate Bizppurio accounts for inspection and production."
     },
     "live_mode_warning_title": "Sending in production",
-    "live_mode_warning_body": "Test mode is off, so real SMS and alimtalk messages are sent to actual customers and sending fees are charged. Keep test mode on while inspecting.",
+    "live_mode_warning_body": "Inspection mode is off, so real SMS and alimtalk messages are sent to actual customers and sending fees are charged. Keep inspection mode on during inspection.",
     "sections": {
       "api": {
         "title": "API Integration",
@@ -105,10 +105,11 @@
   "banner": {
     "not_ready": "Setup required for delivery is incomplete.",
     "setup_action": "Set up",
-    "test_mode": "Test mode — messages are not actually sent."
+    "test_mode": "Inspection mode — messages are not actually sent."
   },
   "dispatch_result": {
     "column_header": "SMS/Alimtalk Result",
+    "inspection_label": "Inspection",
     "low_balance": "Low balance",
     "fallback": "SMS fallback {status}",
     "detail_title": "SMS/Alimtalk delivery result",
@@ -128,7 +129,7 @@
       "missing_label": "Missing",
       "api_key_missing": "Kakao management API key",
       "sender_key_missing": "Alimtalk sender profile key",
-      "note": "Enter the items above on the Settings tab to browse and register templates. Actual delivery requires turning off test mode and using templates approved by Kakao."
+      "note": "Enter the items above on the Settings tab to browse and register templates. Actual delivery requires turning off inspection mode and using templates approved by Kakao."
     },
     "list_error": {
       "title": "Failed to load the template list"

@@ -148,6 +148,112 @@ class AlimtalkPayloadMapperTest extends PluginTestCase
         $this->assertSame('https://shop/X1', $result['extra']['link']['url_pc']);
     }
 
+    public function test_원문에_프로토콜_접두어가_있고_변수값도_완전url이면_중복을_제거한다(): void
+    {
+        // 결함② — 카카오 콘솔에 `http://#{action_url}` 로 등록된 버튼. action_url 자체가
+        // config('app.url') 기반 완전 URL(https://...)이라 단순 치환 시 프로토콜이 중복된다.
+        $result = $this->mapper()->map(
+            [
+                'templateContent' => '본문',
+                'buttons' => [
+                    ['name' => '로그인하기', 'linkType' => 'WL', 'linkMo' => 'http://#{action_url}'],
+                ],
+            ],
+            ['action_url' => 'https://ehkim.gnuboard.net/login'],
+        );
+
+        $this->assertSame(
+            'https://ehkim.gnuboard.net/login',
+            $result['extra']['button'][0]['url_mobile'],
+            '원문 접두어(http://)를 제거해 프로토콜 중복(http://https://...)을 방지해야 한다.',
+        );
+    }
+
+    public function test_원문_접두어가_https이고_변수값도_https이면_중복을_제거한다(): void
+    {
+        // 실제 카카오 콘솔 등록값(관리자 화면 상세조회 스크린샷 확인, 2026-07-24) —
+        // "회원가입 환영" 템플릿 버튼이 http:// 가 아니라 https://#{action_url} 로 등록돼 있다.
+        $result = $this->mapper()->map(
+            [
+                'templateContent' => '본문',
+                'buttons' => [
+                    ['name' => '로그인하기', 'linkType' => 'WL', 'linkMo' => 'https://#{action_url}'],
+                ],
+            ],
+            ['action_url' => 'https://ehkim.gnuboard.net/login'],
+        );
+
+        $this->assertSame(
+            'https://ehkim.gnuboard.net/login',
+            $result['extra']['button'][0]['url_mobile'],
+            '원문 접두어가 https:// 인 경우도 동일하게 중복(https://https://...)을 방지해야 한다.',
+        );
+    }
+
+    public function test_원문에_프로토콜_접두어가_없으면_변수값을_그대로_둔다(): void
+    {
+        // 가이드 문서 원안(#{action_url} 만 등록)대로면 애초에 중복이 없으므로 손대지 않는다.
+        $result = $this->mapper()->map(
+            [
+                'templateContent' => '본문',
+                'buttons' => [
+                    ['name' => '로그인하기', 'linkType' => 'WL', 'linkMo' => '#{action_url}'],
+                ],
+            ],
+            ['action_url' => 'https://ehkim.gnuboard.net/login'],
+        );
+
+        $this->assertSame('https://ehkim.gnuboard.net/login', $result['extra']['button'][0]['url_mobile']);
+    }
+
+    public function test_원문_접두어가_있어도_변수값이_상대경로면_접두어를_유지한다(): void
+    {
+        // 변수값 자체가 프로토콜을 포함하지 않는 경우(상대경로 등) 접두어는 진짜로 필요한
+        // 부분이므로 제거하면 안 된다.
+        $result = $this->mapper()->map(
+            [
+                'templateContent' => '본문',
+                'buttons' => [
+                    ['name' => '이동', 'linkType' => 'WL', 'linkMo' => 'http://#{path}'],
+                ],
+            ],
+            ['path' => '/foo'],
+        );
+
+        $this->assertSame('http:///foo', $result['extra']['button'][0]['url_mobile']);
+    }
+
+    public function test_대표링크도_프로토콜_중복을_제거한다(): void
+    {
+        // mapLinkFields(대표링크)도 mapButtons 와 동일 규칙을 공유해야 한다.
+        $result = $this->mapper()->map(
+            [
+                'templateContent' => '본문',
+                'templateRepresentLink' => ['linkMo' => 'http://#{action_url}'],
+            ],
+            ['action_url' => 'https://ehkim.gnuboard.net/login'],
+        );
+
+        $this->assertSame('https://ehkim.gnuboard.net/login', $result['extra']['link']['url_mobile']);
+    }
+
+    public function test_변수가_data에_없으면_원문을_유지한다(): void
+    {
+        // data 에 없는 변수는 원문(#{key}) 유지 정책 — 프로토콜 중복 방어 로직이 이 정책을
+        // 깨서는 안 된다(원문이 http:// 로 시작하지만 치환 자체가 안 일어나므로 그대로 둔다).
+        $result = $this->mapper()->map(
+            [
+                'templateContent' => '본문',
+                'buttons' => [
+                    ['name' => '로그인하기', 'linkType' => 'WL', 'linkMo' => 'http://#{unknown_var}'],
+                ],
+            ],
+            [],
+        );
+
+        $this->assertSame('http://#{unknown_var}', $result['extra']['button'][0]['url_mobile']);
+    }
+
     public function test_부재_필드는_extra에_넣지_않는다(): void
     {
         // 본문만 있는 단순 템플릿 → extra 는 비어야 한다.

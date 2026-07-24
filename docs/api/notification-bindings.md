@@ -85,7 +85,7 @@ HTTP/1.1 200
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | notification_type | body | string | 예 | max 100 | <!-- TODO: 용도 --> |
-| template_code | body | string | 아니오 | max 30 | <!-- TODO: 용도 --> |
+| template_code | body | string | 아니오 | max 50 | <!-- TODO: 용도 --> |
 | template_name | body | string | 아니오 | max 255 | template 이름 (식별자) |
 | fallback_sms_enabled | body | boolean | 아니오 | — | <!-- TODO: 용도 --> |
 

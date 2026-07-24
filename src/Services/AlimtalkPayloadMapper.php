@@ -120,7 +120,7 @@ class AlimtalkPayloadMapper
             // 링크 필드(linkMo/linkPc/linkAnd/linkIos) → 발송 필드 + URL 변수 치환.
             foreach (self::LINK_FIELD_MAP as $from => $to) {
                 if (isset($button[$from]) && $button[$from] !== '') {
-                    $row[$to] = $this->substitute((string) $button[$from], $data);
+                    $row[$to] = $this->substituteLinkField((string) $button[$from], $data);
                 }
             }
 
@@ -158,7 +158,7 @@ class AlimtalkPayloadMapper
 
         foreach (self::LINK_FIELD_MAP as $from => $to) {
             if (isset($link[$from]) && $link[$from] !== '') {
-                $mapped[$to] = $this->substitute((string) $link[$from], $data);
+                $mapped[$to] = $this->substituteLinkField((string) $link[$from], $data);
             }
         }
 
@@ -257,5 +257,41 @@ class AlimtalkPayloadMapper
         }
 
         return strtr($text, $replacements);
+    }
+
+    /**
+     * 버튼/링크 URL 필드를 치환하고, 프로토콜 중복을 방어합니다.
+     *
+     * 코어 알림 data 의 `*_url` 계열 변수(action_url 등)는 항상 `config('app.url')` 기반의
+     * 프로토콜 포함 완전한 URL 이다(mail 채널이 href="{action_url}" 로 원문 그대로 소비하는
+     * 계약). 반면 카카오 알림톡 버튼은 `http://#{action_url}` 처럼 원문에 프로토콜 접두어를
+     * 직접 붙여 등록되는 경우가 있어, 단순 문자열 치환 시 `http://https://…` 형태로 프로토콜이
+     * 중복될 수 있다.
+     *
+     * 원문이 `http://`/`https://` 로 시작 + 치환 결과가 (그 접두어를 제거했을 때) 다시
+     * `http://`/`https://` 로 시작하는 경우에만 원문의 선행 접두어를 제거한다. 변수가 이미
+     * 프로토콜 없이 등록된 경우(가이드 문서 원안)나, 변수값 자체가 프로토콜을 포함하지 않는
+     * 경우(상대경로 등)는 원문을 그대로 둔다 — 후자를 건드리면 오히려 필요한 접두어가 사라진다.
+     *
+     * @param  string  $text  치환 대상(#{key} 포함, 링크 필드 원문)
+     * @param  array<string, mixed>  $data  변수 치환 소스
+     * @return string 치환되고 프로토콜 중복이 제거된 문자열
+     */
+    private function substituteLinkField(string $text, array $data): string
+    {
+        $substituted = $this->substitute($text, $data);
+
+        foreach (['http://', 'https://'] as $prefix) {
+            if (! str_starts_with($text, $prefix)) {
+                continue;
+            }
+
+            $afterPrefix = substr($substituted, strlen($prefix));
+            if (str_starts_with($afterPrefix, 'http://') || str_starts_with($afterPrefix, 'https://')) {
+                return $afterPrefix;
+            }
+        }
+
+        return $substituted;
     }
 }

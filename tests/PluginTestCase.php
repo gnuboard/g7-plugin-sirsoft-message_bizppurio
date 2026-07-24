@@ -2,6 +2,7 @@
 
 namespace Plugins\Sirsoft\MessageBizppurio\Tests;
 
+use App\Extension\HookListenerRegistrar;
 use App\Extension\HookManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -25,6 +26,21 @@ abstract class PluginTestCase extends TestCase
      */
     private ?array $hookSnapshot = null;
 
+    /**
+     * HookListenerRegistrar::$registered 스냅샷 — tearDown 에서 복원.
+     *
+     * HookManager 의 hooks/filters 는 스냅샷 복원되지만, HookListenerRegistrar 는
+     * "source::listenerClass" 키로 별도의 static 등록 여부 캐시를 갖는다(동일 PHP
+     * process 내 중복 등록 방지용, idempotent 보장). 이 캐시를 복원하지 않으면,
+     * 어떤 테스트에서 activate() 로 리스너를 한 번 등록한 뒤 HookManager 상태만
+     * 복원되고 이 캐시는 "등록됨"으로 남아, 다음 테스트에서 같은 리스너를 다시
+     * register() 해도 이미 등록된 것으로 판단해 스킵된다 — 실제로는 훅이 비어있는데
+     * 등록 로직만 건너뛰어 필터가 전혀 발동하지 않는 조용한 실패로 이어진다.
+     *
+     * @var array<string, bool>|null
+     */
+    private ?array $hookListenerRegistrarSnapshot = null;
+
     /** 테스트 격리용 임시 plugins 스토리지 루트 (setUp 에서 생성, tearDown 에서 제거). */
     private ?string $isolatedPluginsRoot = null;
 
@@ -37,6 +53,7 @@ abstract class PluginTestCase extends TestCase
 
         $this->isolatePluginStorage();
         $this->snapshotHookManager();
+        $this->snapshotHookListenerRegistrar();
     }
 
     /**
@@ -45,6 +62,7 @@ abstract class PluginTestCase extends TestCase
     protected function tearDown(): void
     {
         $this->restoreHookManager();
+        $this->restoreHookListenerRegistrar();
         $this->restorePluginStorage();
 
         parent::tearDown();
@@ -119,6 +137,31 @@ abstract class PluginTestCase extends TestCase
         $ref->getProperty('dispatching')->setValue(null, $this->hookSnapshot['dispatching']);
 
         $this->hookSnapshot = null;
+    }
+
+    /**
+     * HookListenerRegistrar static $registered 를 스냅샷.
+     */
+    private function snapshotHookListenerRegistrar(): void
+    {
+        $ref = new \ReflectionClass(HookListenerRegistrar::class);
+        $prop = $ref->getProperty('registered');
+        $this->hookListenerRegistrarSnapshot = $prop->getValue();
+    }
+
+    /**
+     * 스냅샷 시점으로 HookListenerRegistrar::$registered 를 복원.
+     */
+    private function restoreHookListenerRegistrar(): void
+    {
+        if ($this->hookListenerRegistrarSnapshot === null) {
+            return;
+        }
+
+        $ref = new \ReflectionClass(HookListenerRegistrar::class);
+        $ref->getProperty('registered')->setValue(null, $this->hookListenerRegistrarSnapshot);
+
+        $this->hookListenerRegistrarSnapshot = null;
     }
 
     /**

@@ -1,3 +1,6 @@
+// e2e:allow 검수 라벨 표시(is_test_mode)는 Chrome MCP로 실제 회원가입→SMS 발송→화면 렌더까지
+// 실측 검증 완료(2026-07-24). 정식 E2E는 비즈뿌리오 자격증명·채널 활성화·webhook 등 발송 인프라
+// 의존이 커서 이번 변경 범위를 벗어나며, 별도 계획(plan-e2e-tests)에서 다룰 예정.
 /**
  * 코어 알림 발송 이력 결과 컬럼 주입 렌더 테스트 (A-2)
  *
@@ -185,6 +188,46 @@ describe('A-2 결과 컬럼 주입 — 렌더', () => {
         utils.mockApi('dispatchResults', { response: { data: { results: {} } } });
         await utils.render();
         expect(screen.queryByText('-')).not.toBeInTheDocument();
+        utils.cleanup();
+    });
+
+    it('검수 모드 발송 건은 상태 라벨(발송중) 대신 검수 라벨을 렌더한다', async () => {
+        // is_test_mode=true 이면 status='sent'(발송중)이어도 검수 라벨로 대체 표시한다(PO 확정 —
+        // "발송중" 문구 자체가 검수 모드에서는 오해 소지라 배지 병기가 아니라 라벨 교체).
+        const utils = createLayoutTest(buildProbe(), { componentRegistry: registry as any, locale: 'ko' });
+        utils.mockApi('notificationLogs', { response: logs([4]) });
+        utils.mockApi('dispatchResults', {
+            response: { data: { results: { 4: { status: 'sent', status_label: '발송중', result_label: null, is_low_balance: false, fallback_status: null, is_test_mode: true } } } },
+        });
+        await utils.render();
+        // $t('key') 는 이 렌더 환경에서 번역 실패 시 원문 키를 그대로 반환한다($t: 와 동일 폴백).
+        expect(screen.getByText('sirsoft-message_bizppurio.dispatch_result.inspection_label')).toBeInTheDocument();
+        expect(screen.queryByText('발송중')).not.toBeInTheDocument();
+        utils.cleanup();
+    });
+
+    it('운영 모드 발송 건은 검수 라벨 없이 기존 상태 라벨을 그대로 렌더한다', async () => {
+        const utils = createLayoutTest(buildProbe(), { componentRegistry: registry as any, locale: 'ko' });
+        utils.mockApi('notificationLogs', { response: logs([5]) });
+        utils.mockApi('dispatchResults', {
+            response: { data: { results: { 5: { status: 'sent', status_label: '발송중', result_label: null, is_low_balance: false, fallback_status: null, is_test_mode: false } } } },
+        });
+        await utils.render();
+        expect(screen.getByText('발송중')).toBeInTheDocument();
+        expect(screen.queryByText('sirsoft-message_bizppurio.dispatch_result.inspection_label')).not.toBeInTheDocument();
+        utils.cleanup();
+    });
+
+    it('is_test_mode 필드가 없는 과거 이력은 검수 라벨 없이 기존 라벨을 렌더한다', async () => {
+        // 컬럼 신설 이전 이력(is_test_mode 미포함)도 undefined === true 가 false 이므로 안전하게 기존 라벨.
+        const utils = createLayoutTest(buildProbe(), { componentRegistry: registry as any, locale: 'ko' });
+        utils.mockApi('notificationLogs', { response: logs([6]) });
+        utils.mockApi('dispatchResults', {
+            response: { data: { results: { 6: { status: 'success', status_label: '성공', result_label: '성공 (4100)', is_low_balance: false, fallback_status: null } } } },
+        });
+        await utils.render();
+        expect(screen.getByText('성공 (4100)')).toBeInTheDocument();
+        expect(screen.queryByText('sirsoft-message_bizppurio.dispatch_result.inspection_label')).not.toBeInTheDocument();
         utils.cleanup();
     });
 });

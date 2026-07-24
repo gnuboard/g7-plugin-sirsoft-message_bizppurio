@@ -38,8 +38,8 @@ class RegisterNotificationChannelsListener implements HookListenerInterface
     /** lang 네임스페이스 접두사 (plugin.php 와 동일) */
     private const LANG = 'sirsoft-message_bizppurio::messages';
 
-    /** 이 플러그인이 등록하는 채널 ID 목록 */
-    private const CHANNEL_IDS = ['sms', 'alimtalk'];
+    /** 이 플러그인이 등록하는 채널 ID 목록 (Plugin::cleanupChannelContributions 에서도 참조) */
+    public const CHANNEL_IDS = ['sms', 'alimtalk'];
 
     /** 3영역 채널 후보 확장을 구독할 hookPrefix (D7) */
     private const CHANNEL_HOOK_PREFIXES = ['core.auth', 'sirsoft-ecommerce', 'sirsoft-board'];

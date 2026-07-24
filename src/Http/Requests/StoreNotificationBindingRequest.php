@@ -33,7 +33,7 @@ class StoreNotificationBindingRequest extends FormRequest
     {
         return [
             'notification_type' => ['required', 'string', 'max:100'],
-            'template_code' => ['nullable', 'string', 'max:30'],
+            'template_code' => ['nullable', 'string', 'max:50'],
             'template_name' => ['nullable', 'string', 'max:255'],
             'fallback_sms_enabled' => ['sometimes', 'boolean'],
         ];

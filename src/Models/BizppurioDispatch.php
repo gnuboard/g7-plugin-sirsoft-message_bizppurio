@@ -28,6 +28,7 @@ use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
  * @property string|null $to_name
  * @property int|null $to_user_id
  * @property string $content
+ * @property array|null $request_payload
  * @property string|null $notification_type
  * @property int|null $notification_log_id
  * @property string $status
@@ -35,6 +36,7 @@ use Plugins\Sirsoft\MessageBizppurio\Enums\DispatchStatus;
  * @property string|null $result_message
  * @property string|null $fallback_status
  * @property string $source
+ * @property bool|null $is_test_mode
  * @property Carbon|null $sent_at
  * @property Carbon|null $reported_at
  * @property array|null $raw_payload
@@ -65,6 +67,7 @@ class BizppurioDispatch extends Model
         'to_name',
         'to_user_id',
         'content',
+        'request_payload',
         'notification_type',
         'notification_log_id',
         'status',
@@ -72,6 +75,7 @@ class BizppurioDispatch extends Model
         'result_message',
         'fallback_status',
         'source',
+        'is_test_mode',
         'sent_at',
         'reported_at',
         'raw_payload',
@@ -90,8 +94,10 @@ class BizppurioDispatch extends Model
             'source' => DispatchSource::class,
             'to_user_id' => 'integer',
             'notification_log_id' => 'integer',
+            'is_test_mode' => 'boolean',
             'sent_at' => 'datetime',
             'reported_at' => 'datetime',
+            'request_payload' => 'array',
             'raw_payload' => 'array',
         ];
     }

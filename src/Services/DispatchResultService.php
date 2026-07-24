@@ -76,7 +76,7 @@ class DispatchResultService
      * dispatch 1건을 화면 표시용 결과 배열로 변환합니다.
      *
      * @param  BizppurioDispatch  $dispatch  연결된 발송 이력
-     * @return array<string, mixed> 상태·결과 라벨·잔액부족·대체발송 표시 데이터
+     * @return array<string, mixed> 상태·결과 라벨·잔액부족·대체발송·검수 모드 표시 데이터
      */
     private function buildResult(BizppurioDispatch $dispatch): array
     {
@@ -92,6 +92,8 @@ class DispatchResultService
             'is_low_balance' => $hasCode && $this->resultCodes->isBalanceLow($code),
             'fallback_status' => $dispatch->fallback_status,
             'channel' => $dispatch->channel?->value,
+            // 발송 시점 검수 모드 스냅샷. null=컬럼 신설 이전 이력(검수 여부 판단 불가 → 화면 미표시).
+            'is_test_mode' => $dispatch->is_test_mode,
         ];
     }
 }

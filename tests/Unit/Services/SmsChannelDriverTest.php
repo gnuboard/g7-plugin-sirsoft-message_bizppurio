@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\GenericNotification;
 use App\Notifications\GuestNotifiable;
 use App\Services\NotificationTemplateService;
+use App\Services\PluginSettingsService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
@@ -47,13 +48,22 @@ class SmsChannelDriverTest extends PluginTestCase
      * 템플릿 resolve 결과를 지정한 driver 를 만듭니다.
      *
      * @param  NotificationTemplate|null  $template  resolve 반환값
+     * @param  bool  $isTestMode  검수 모드 설정값 (이력 스냅샷 검증용)
      */
-    private function makeDriver(?NotificationTemplate $template, ?MessagePayloadBuilder $builder = null): SmsChannelDriver
-    {
+    private function makeDriver(
+        ?NotificationTemplate $template,
+        ?MessagePayloadBuilder $builder = null,
+        bool $isTestMode = true,
+    ): SmsChannelDriver {
         $templateService = Mockery::mock(NotificationTemplateService::class);
         $templateService->shouldReceive('resolve')
             ->with(Mockery::any(), 'sms')
             ->andReturn($template);
+
+        $pluginSettings = Mockery::mock(PluginSettingsService::class);
+        $pluginSettings->shouldReceive('get')
+            ->with('sirsoft-message_bizppurio', 'is_test_mode', true)
+            ->andReturn($isTestMode);
 
         return new SmsChannelDriver(
             $templateService,
@@ -61,6 +71,7 @@ class SmsChannelDriverTest extends PluginTestCase
             $builder ?? $this->spyBuilder(),
             new BizppurioDispatchRepository,
             new DispatchLinkContext,
+            $pluginSettings,
         );
     }
 
@@ -160,6 +171,41 @@ class SmsChannelDriverTest extends PluginTestCase
         $this->assertNull($dispatch->to_user_id, '비회원 발송은 to_user_id 가 null 이어야 한다.');
     }
 
+    public function test_발송_시_실제_전송_payload가_이력에_저장된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+        $builder = $this->spyBuilder();
+
+        $this->makeDriver($this->fakeTemplate(), $builder)->send($member, $this->notification());
+
+        $dispatch = BizppurioDispatch::first();
+        $this->assertNotNull($dispatch->request_payload, '결함① — 실제 비즈뿌리오 전송 payload 가 이력에 저장돼야 한다.');
+        $this->assertArrayNotHasKey('to', $dispatch->request_payload, 'to 는 to_number 컬럼과 중복이라 제외돼야 한다.');
+    }
+
+    public function test_이력_저장_payload에서_개인식별_정보는_제외된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        // 실제 MessagePayloadBuilder(스파이 아님)로 진짜 조립 로직을 태워야 forHistory() 제외
+        // 규칙(to/refkey/type/message 제거)을 검증할 수 있다.
+        $pluginSettings = Mockery::mock(PluginSettingsService::class);
+        $pluginSettings->shouldReceive('get')->andReturn('');
+        $realBuilder = new MessagePayloadBuilder($pluginSettings);
+
+        $this->makeDriver($this->fakeTemplate(), $realBuilder)->send($member, $this->notification());
+
+        $dispatch = BizppurioDispatch::first();
+        $payload = $dispatch->request_payload;
+
+        $this->assertArrayNotHasKey('to', $payload, 'to 는 to_number 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertArrayNotHasKey('refkey', $payload, 'refkey 는 refkey 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertArrayNotHasKey('type', $payload, 'type 은 channel 컬럼과 중복이라 제외돼야 한다.');
+        $this->assertArrayNotHasKey('message', $payload['content']['sms'] ?? [], 'message 는 content 컬럼과 중복이라 제외돼야 한다.');
+    }
+
     public function test_발송하지_않으면_이력도_생성하지_않는다(): void
     {
         Bus::fake();
@@ -235,5 +281,25 @@ class SmsChannelDriverTest extends PluginTestCase
 
         Bus::assertDispatched(SendMessageJob::class);
         $this->assertDatabaseCount('bizppurio_dispatches', 1);
+    }
+
+    public function test_검수_모드_설정값이_이력에_스냅샷으로_기록된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        $this->makeDriver($this->fakeTemplate(), isTestMode: true)->send($member, $this->notification());
+
+        $this->assertTrue(BizppurioDispatch::first()->is_test_mode);
+    }
+
+    public function test_운영_모드_설정값도_이력에_스냅샷으로_기록된다(): void
+    {
+        Bus::fake();
+        $member = User::factory()->create(['mobile' => '010-1234-5678']);
+
+        $this->makeDriver($this->fakeTemplate(), isTestMode: false)->send($member, $this->notification());
+
+        $this->assertFalse(BizppurioDispatch::first()->is_test_mode);
     }
 }

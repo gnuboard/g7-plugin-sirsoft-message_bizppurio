@@ -25,7 +25,7 @@ return new class extends Migration
             $table->bigIncrements('id')->comment('연결 설정 PK');
             $table->string('notification_type', 100)->comment('코어 notification_definitions.type (연결 대상 알림)');
             $table->string('channel', 20)->default('alimtalk')->comment('채널 (1차 alimtalk 고정)');
-            $table->string('template_code', 30)->comment('연결한 카카오 알림톡 템플릿 코드');
+            $table->string('template_code', 50)->comment('연결한 카카오 알림톡 템플릿 코드');
             $table->string('template_name', 255)->comment('템플릿 이름 (사람 식별 + 고아 감지용 스냅샷)');
             $table->boolean('fallback_sms_enabled')->default(false)->comment('개별 대체발송 ON/OFF (실패 시 SMS/LMS 대체)');
             $table->boolean('is_active')->default(true)->comment('연동 활성 여부');
