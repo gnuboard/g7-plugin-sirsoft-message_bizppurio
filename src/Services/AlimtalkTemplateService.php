@@ -29,6 +29,9 @@ class AlimtalkTemplateService
     /** 목록 조회 기본 페이지 크기 */
     private const DEFAULT_COUNT = 20;
 
+    /** kapi 결과코드: 요청한 데이터가 없음(검색 결과 0건 포함, 13.응답코드정의.md) */
+    private const NOT_FOUND_CODE = '508';
+
     /**
      * serviceStatus → 상태 배지 매핑.
      *
@@ -63,7 +66,7 @@ class AlimtalkTemplateService
      * @param  array<string, mixed>  $filters  status(templateStatus)·keyword·page·count
      * @return array{templates: array<int, array<string, mixed>>, pagination: array<string, int>}
      *
-     * @throws BizppurioApiException 자격증명 미설정·조회 실패 시
+     * @throws BizppurioApiException 자격증명 미설정·조회 실패 시(결과코드 508 제외)
      */
     public function list(array $filters = []): array
     {
@@ -82,7 +85,25 @@ class AlimtalkTemplateService
 
         $response = $this->kakao->getTemplateList($this->senderKey(), $params);
 
-        $this->assertSuccess($response);
+        try {
+            $this->assertSuccess($response);
+        } catch (BizppurioApiException $e) {
+            // 508 = "요청한 데이터가 없음"(검색 결과 0건 포함). 카카오는 이 경우를 목록
+            // 조회 실패로 응답하지만, 실제로는 정상적인 빈 결과이므로 예외로 취급하지 않는다.
+            if ($e->getResultCode() === self::NOT_FOUND_CODE) {
+                return [
+                    'templates' => [],
+                    'pagination' => [
+                        'total' => 0,
+                        'total_page' => 1,
+                        'current_page' => $params['page'],
+                        'per_page' => $params['count'],
+                    ],
+                ];
+            }
+
+            throw $e;
+        }
 
         $rows = (array) ($response['data']['list'] ?? $response['data'] ?? []);
 

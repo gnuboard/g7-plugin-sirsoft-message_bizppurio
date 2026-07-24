@@ -192,6 +192,26 @@ class AlimtalkTemplateControllerTest extends PluginTestCase
     }
 
     /**
+     * @scenario auth=view,kapi_result=not_found
+     *
+     * @effects list_treats_kapi_508_as_empty_result_not_error
+     */
+    public function test_kapi_508은_에러가_아니라_빈_목록으로_응답한다(): void
+    {
+        $this->mockService()->shouldReceive('list')->once()->andReturn([
+            'templates' => [],
+            'pagination' => ['total' => 0, 'total_page' => 1, 'current_page' => 1, 'per_page' => 20],
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders(['sirsoft-message_bizppurio.messaging.view']))
+            ->getJson(self::BASE.'?keyword=대글');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.templates', []);
+        $response->assertJsonPath('data.pagination.total', 0);
+    }
+
+    /**
      * @scenario auth=manage,action=clear_cache
      *
      * @effects clear_cache_delegates_to_binding_service_and_returns_count

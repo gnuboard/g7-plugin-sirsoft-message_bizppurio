@@ -150,6 +150,21 @@ class AlimtalkTemplateServiceTest extends PluginTestCase
         }
     }
 
+    public function test_목록조회는_kapi_508을_빈_목록으로_처리한다(): void
+    {
+        // 카카오 결과코드 508 = "요청한 데이터가 없음"(13.응답코드정의.md). 목록 검색에서
+        // 매칭 결과가 0건일 때 카카오가 이 코드로 응답하므로, 진짜 에러가 아니라 빈 목록으로
+        // 취급해야 한다(PO 실측: "댓글"은 200 정상 필터링, "대글"처럼 매칭 없는 키워드만 508).
+        Http::fake([
+            'kapi.ppurio.com/*' => Http::response(['code' => '508', 'message' => '요청한 데이타가 없습니다.'], 200),
+        ]);
+
+        $result = $this->service()->list(['keyword' => '대글']);
+
+        $this->assertSame([], $result['templates']);
+        $this->assertSame(0, $result['pagination']['total']);
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();

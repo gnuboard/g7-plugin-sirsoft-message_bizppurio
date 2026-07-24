@@ -27,11 +27,13 @@ description: |
 
 axes:
   auth: [view, forbidden, guest]
-  kapi_result: [ok, fail]
+  kapi_result: [ok, fail, not_found]
 
 exclusions:
   - { auth: guest, kapi_result: fail, reason: "비인증은 결과 무관 401 — kapi 도달 전 차단" }
   - { auth: forbidden, kapi_result: fail, reason: "권한 없으면 403 — kapi 도달 전 차단" }
+  - { auth: guest, kapi_result: not_found, reason: "비인증은 결과 무관 401 — kapi 도달 전 차단" }
+  - { auth: forbidden, kapi_result: not_found, reason: "권한 없으면 403 — kapi 도달 전 차단" }
 
 effects:
   # 탭 네비게이션 (UI)
@@ -77,6 +79,8 @@ effects:
   # kapi 실패 전파 (백엔드)
   - kapi_failure_is_surfaced_as_422_with_result_code
   - sender_key_missing_throws
+  # kapi 508(요청한 데이터가 없음=검색 결과 0건) 은 에러가 아니라 빈 목록으로 처리 (백엔드)
+  - list_treats_kapi_508_as_empty_result_not_error
   # 다국어
   - all_referenced_i18n_keys_exist_in_ko_and_en
 
