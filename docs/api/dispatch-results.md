@@ -102,6 +102,7 @@ HTTP/1.1 200
 | is_low_balance | boolean | 잔액 부족(9070 문자 / 7436 알림톡) 여부 |
 | fallback_status | string\|null | SMS 대체발송 결과 (webhook TELRES). 없으면 null |
 | channel | string\|null | 발송 채널: `sms` / `lms` / `alimtalk` |
+| content | string\|null | 실제 비즈뿌리오에 발송한 본문. 알림톡은 코어 `notification_logs.body`(대체발송용 코어 템플릿 값)와 달리 카카오 승인 템플릿의 실제 내용이므로, 화면은 이 값을 채널별로 구분해 별도 노출한다 |
 
 **응답 예시**
 

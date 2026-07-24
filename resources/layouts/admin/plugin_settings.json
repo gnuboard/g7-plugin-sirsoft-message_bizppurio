@@ -1467,7 +1467,7 @@
                                                                                 "comment": "조회 전용 — [내용] 버튼 하나. 상세 조회 후 내용 모달 열기(관리 액션 없음).",
                                                                                 "type": "basic",
                                                                                 "name": "Button",
-                                                                                "props": { "type": "button", "className": "btn btn-secondary btn-xs flex-center gap-1" },
+                                                                                "props": { "type": "button", "className": "btn btn-secondary btn-xs flex-center gap-1 whitespace-nowrap" },
                                                                                 "actions": [
                                                                                     {
                                                                                         "type": "click",
@@ -1482,7 +1482,6 @@
                                                                                     }
                                                                                 ],
                                                                                 "children": [
-                                                                                    { "type": "basic", "name": "Icon", "props": { "name": "eye", "size": "sm" } },
                                                                                     { "type": "basic", "name": "Span", "text": "$t:sirsoft-message_bizppurio.templates.actions.detail" }
                                                                                 ]
                                                                             }

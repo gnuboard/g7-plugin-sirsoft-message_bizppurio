@@ -36,6 +36,14 @@ function getResultCellChildren(): any[] {
     return column.cellChildren;
 }
 
+/** overlay 에서 행 토글(expandChildren) 에 append 된 결과 블록을 추출한다. */
+function getResultExpandChildren(): any[] {
+    const inj = (overlay as any).injections.find(
+        (i: any) => i.target_id === 'notification_log_datagrid' && i.position === 'inject_props',
+    );
+    return inj.props.expandChildren._append;
+}
+
 /** 결과 컬럼 cellChildren 을 iteration row 컨텍스트로 렌더하는 프로브 레이아웃. */
 function buildProbe() {
     return {
@@ -52,6 +60,27 @@ function buildProbe() {
                 iteration: { source: '{{notificationLogs.data?.data ?? []}}', item_var: 'row' },
                 props: { 'data-testid': 'result-cell' },
                 children: getResultCellChildren(),
+            },
+        ],
+    };
+}
+
+/** 행 토글(expandChildren) 결과 블록을 iteration row 컨텍스트로 렌더하는 프로브 레이아웃. */
+function buildExpandProbe() {
+    return {
+        version: '1.0.0',
+        layout_name: 'test/a2-dispatch-result-expand',
+        data_sources: [
+            { id: 'notificationLogs', type: 'api', endpoint: '/api/test/logs', method: 'GET', auto_fetch: true },
+            { id: 'dispatchResults', type: 'api', endpoint: '/api/test/results', method: 'POST', auto_fetch: true },
+        ],
+        components: [
+            {
+                type: 'basic',
+                name: 'Div',
+                iteration: { source: '{{notificationLogs.data?.data ?? []}}', item_var: 'row' },
+                props: { 'data-testid': 'result-expand' },
+                children: getResultExpandChildren(),
             },
         ],
     };
@@ -228,6 +257,83 @@ describe('A-2 결과 컬럼 주입 — 렌더', () => {
         await utils.render();
         expect(screen.getByText('성공 (4100)')).toBeInTheDocument();
         expect(screen.queryByText('sirsoft-message_bizppurio.dispatch_result.inspection_label')).not.toBeInTheDocument();
+        utils.cleanup();
+    });
+});
+
+describe('A-2 행 토글 — 알림톡 실제 발송 내용', () => {
+    it('알림톡 채널 + 실제 발송 내용이 있으면 코어 "본문"과 별도로 렌더한다', async () => {
+        const utils = createLayoutTest(buildExpandProbe(), { componentRegistry: registry as any, locale: 'ko' });
+        utils.mockApi('notificationLogs', { response: logs([7], 'alimtalk') });
+        utils.mockApi('dispatchResults', {
+            response: {
+                data: {
+                    results: {
+                        7: {
+                            status: 'success',
+                            status_label: '성공',
+                            result_label: '성공 (7000)',
+                            is_low_balance: false,
+                            fallback_status: null,
+                            channel: 'alimtalk',
+                            content: '[그누보드7] 회원가입을 환영합니다\n\n김으네님, 가입이 완료되었습니다.',
+                        },
+                    },
+                },
+            },
+        });
+        await utils.render();
+        expect(screen.getByText(/회원가입을 환영합니다/)).toBeInTheDocument();
+        utils.cleanup();
+    });
+
+    it('sms 채널은 실제 발송 내용 값이 있어도 렌더하지 않는다(코어 본문과 동일하므로 중복 표시 불필요)', async () => {
+        const utils = createLayoutTest(buildExpandProbe(), { componentRegistry: registry as any, locale: 'ko' });
+        utils.mockApi('notificationLogs', { response: logs([8], 'sms') });
+        utils.mockApi('dispatchResults', {
+            response: {
+                data: {
+                    results: {
+                        8: {
+                            status: 'success',
+                            status_label: '성공',
+                            result_label: '성공 (4100)',
+                            is_low_balance: false,
+                            fallback_status: null,
+                            channel: 'sms',
+                            content: '문자 본문',
+                        },
+                    },
+                },
+            },
+        });
+        await utils.render();
+        expect(screen.queryByText('문자 본문')).not.toBeInTheDocument();
+        utils.cleanup();
+    });
+
+    it('알림톡 채널이지만 실제 발송 내용이 없으면(과거 이력 등) 렌더하지 않는다', async () => {
+        const utils = createLayoutTest(buildExpandProbe(), { componentRegistry: registry as any, locale: 'ko' });
+        utils.mockApi('notificationLogs', { response: logs([9], 'alimtalk') });
+        utils.mockApi('dispatchResults', {
+            response: {
+                data: {
+                    results: {
+                        9: {
+                            status: 'success',
+                            status_label: '성공',
+                            result_label: '성공 (7000)',
+                            is_low_balance: false,
+                            fallback_status: null,
+                            channel: 'alimtalk',
+                            content: null,
+                        },
+                    },
+                },
+            },
+        });
+        await utils.render();
+        expect(screen.queryByText('sirsoft-message_bizppurio.dispatch_result.sent_content_label')).not.toBeInTheDocument();
         utils.cleanup();
     });
 });

@@ -94,6 +94,10 @@ class DispatchResultService
             'channel' => $dispatch->channel?->value,
             // 발송 시점 검수 모드 스냅샷. null=컬럼 신설 이전 이력(검수 여부 판단 불가 → 화면 미표시).
             'is_test_mode' => $dispatch->is_test_mode,
+            // 실제 비즈뿌리오에 발송한 본문. 알림톡은 코어 notification_logs.body(대체발송용 코어
+            // 템플릿 본문)와 다른 값(카카오 승인 템플릿 실제 내용)이라, 코어 "본문" 표시만으로는
+            // 실제 발송 내용을 알 수 없다 — 화면이 채널별로 구분해 별도 노출할 수 있도록 포함.
+            'content' => $dispatch->content,
         ];
     }
 }

@@ -128,4 +128,18 @@ class DispatchResultServiceTest extends PluginTestCase
         $this->assertSame('success', $results[60]['status']);
         $this->assertTrue($results[61]['is_low_balance']);
     }
+
+    /**
+     * 실제 발송 본문(dispatch.content)이 결과에 포함된다 — 알림톡은 코어
+     * notification_logs.body(대체발송용 코어 템플릿 값)와 실제 카카오 발송 내용이 달라,
+     * 화면이 채널별로 구분해 실제 발송 내용을 보여줄 수 있도록 결과에 담아야 한다.
+     */
+    public function test_실제_발송_본문이_결과에_포함된다(): void
+    {
+        $this->linkedDispatch(80, ['content' => '[그누보드7] 회원가입을 환영합니다\n\n김으네님, 가입이 완료되었습니다.']);
+
+        $results = $this->service->resultsForLogIds([80]);
+
+        $this->assertSame('[그누보드7] 회원가입을 환영합니다\n\n김으네님, 가입이 완료되었습니다.', $results[80]['content']);
+    }
 }

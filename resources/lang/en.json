@@ -113,7 +113,9 @@
     "low_balance": "Low balance",
     "fallback": "SMS fallback {status}",
     "detail_title": "SMS/Alimtalk delivery result",
-    "channel_label": "Channel: {channel}"
+    "channel_label": "Channel: {channel}",
+    "sent_content_label": "Actual sent content",
+    "sent_content_hint": "Alimtalk messages are sent using the actual content of the approved Kakao template, which may differ from the \"Body\" above."
   },
   "editor": {
     "data_source": {

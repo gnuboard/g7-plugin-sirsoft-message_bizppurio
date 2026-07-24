@@ -113,7 +113,9 @@
     "low_balance": "잔액 부족",
     "fallback": "SMS 대체발송 {status}",
     "detail_title": "문자·알림톡 발송 결과",
-    "channel_label": "발송 채널: {channel}"
+    "channel_label": "발송 채널: {channel}",
+    "sent_content_label": "실제 발송 내용",
+    "sent_content_hint": "알림톡은 카카오 승인 템플릿의 실제 내용으로 발송되며, 위 \"본문\"과 다를 수 있습니다."
   },
   "editor": {
     "data_source": {

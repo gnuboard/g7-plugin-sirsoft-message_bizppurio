@@ -95,6 +95,41 @@
                                             "text": "$t:sirsoft-message_bizppurio.dispatch_result.fallback|status={{(dispatchResults?.data?.results ?? {})[row.id]?.fallback_status}}"
                                         }
                                     ]
+                                },
+                                {
+                                    "comment": "알림톡 실제 발송 내용 — 코어 '본문'(notification_logs.body)은 SMS 대체발송용 코어 템플릿 값이라 실제 카카오 발송 내용(승인 템플릿 전체)과 다르다. row.channel==='alimtalk'이고 실제 발송 내용이 있을 때만 별도 노출해 혼동을 방지한다.",
+                                    "type": "basic",
+                                    "name": "Div",
+                                    "if": "{{row.channel === 'alimtalk' && !!(dispatchResults?.data?.results ?? {})[row.id]?.content}}",
+                                    "props": {
+                                        "className": "pt-2 border-t border-gray-200 dark:border-gray-700"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "basic",
+                                            "name": "Span",
+                                            "props": {
+                                                "className": "form-label"
+                                            },
+                                            "text": "$t:sirsoft-message_bizppurio.dispatch_result.sent_content_label"
+                                        },
+                                        {
+                                            "type": "basic",
+                                            "name": "P",
+                                            "props": {
+                                                "className": "text-sm text-gray-700 dark:text-gray-200 whitespace-pre-line admin-card"
+                                            },
+                                            "text": "{{(dispatchResults?.data?.results ?? {})[row.id]?.content}}"
+                                        },
+                                        {
+                                            "type": "basic",
+                                            "name": "P",
+                                            "props": {
+                                                "className": "text-xs text-gray-400 dark:text-gray-500 mt-1"
+                                            },
+                                            "text": "$t:sirsoft-message_bizppurio.dispatch_result.sent_content_hint"
+                                        }
+                                    ]
                                 }
                             ]
                         }
