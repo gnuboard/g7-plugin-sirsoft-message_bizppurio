@@ -2,8 +2,12 @@
 
 namespace Plugins\Sirsoft\MessageBizppurio\Tests;
 
+use App\Enums\ExtensionStatus;
+use App\Extension\ExtensionMiddlewareRegistry;
 use App\Extension\HookListenerRegistrar;
 use App\Extension\HookManager;
+use App\Extension\PluginManager;
+use App\Models\Plugin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -54,6 +58,38 @@ abstract class PluginTestCase extends TestCase
         $this->isolatePluginStorage();
         $this->snapshotHookManager();
         $this->snapshotHookListenerRegistrar();
+        $this->activateSelfForMiddlewareGate();
+    }
+
+    /**
+     * 자기 플러그인을 미들웨어 게이트 인덱스에 활성 등록한다.
+     *
+     * getMiddleware() self-gate 선언(webhook IP 화이트리스트)은 코어 게이트가
+     * 활성 플러그인 registry 를 대조해 실행하므로, 테스트 환경에서도 plugins 테이블
+     * 활성 행 + PluginManager 인스턴스 등록 + 인덱스 무효화가 있어야 매칭된다.
+     * 누락 시 게이트가 미들웨어를 부착하지 못해 차단 IP 도 통과한다.
+     */
+    protected function activateSelfForMiddlewareGate(): void
+    {
+        Plugin::query()->updateOrCreate(
+            ['identifier' => 'sirsoft-message_bizppurio'],
+            [
+                'vendor' => 'sirsoft',
+                'name' => json_encode(['ko' => 'sirsoft-message_bizppurio', 'en' => 'sirsoft-message_bizppurio']),
+                'version' => '1.0.0',
+                'status' => ExtensionStatus::Active->value,
+            ]
+        );
+        PluginManager::invalidatePluginStatusCache();
+
+        $pluginManager = $this->app->make(PluginManager::class);
+        $property = new \ReflectionProperty($pluginManager, 'plugins');
+        $property->setAccessible(true);
+        $plugins = $property->getValue($pluginManager);
+        $plugins['sirsoft-message_bizppurio'] = new \Plugins\Sirsoft\MessageBizppurio\Plugin;
+        $property->setValue($pluginManager, $plugins);
+
+        ExtensionMiddlewareRegistry::flush();
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Models\NotificationDefinition;
 use Database\Seeders\NotificationDefinitionSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\LinkNotificationLogListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
@@ -448,6 +449,28 @@ class Plugin extends AbstractPlugin
             GuestPhoneExtractListener::class,
             LinkNotificationLogListener::class,
             ValidateBizppurioSettingsListener::class,
+        ];
+    }
+
+    /**
+     * 확장 미들웨어 선언 (self-gate)
+     *
+     * webhook(URL PUSH) 리포트 수신 엔드포인트에만 IP 화이트리스트를 부착한다.
+     * 라우트 파일에서 직접 부착하지 않고 코어 게이트(ExtensionMiddlewareGate)가
+     * 요청 시점에 라우트 이름을 대조해 매칭될 때만 실행한다.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getMiddleware(): array
+    {
+        return [
+            [
+                'class' => BizppurioWebhookIpWhitelist::class,
+                'groups' => ['api'],
+                'targets' => [
+                    'api.plugins.sirsoft-message_bizppurio.webhook',
+                ],
+            ],
         ];
     }
 }

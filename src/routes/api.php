@@ -8,7 +8,6 @@ use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\AlimtalkTemplateControlle
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\DispatchResultController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\NotificationBindingController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\BizppurioWebhookController;
-use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,9 +23,9 @@ use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist
 //
 // api 그룹에 appendToGroup 된 토큰/IDV 미들웨어를 라우트 레벨에서 제외(코어 무수정)하고,
 // 인증은 IP 화이트리스트로 대체한다(계획서 D13). 항상 200 응답(멱등).
+// IP 화이트리스트는 plugin.php::getMiddleware() 에서 이 라우트명으로 self-gate 선언한다.
 Route::post('/webhook', [BizppurioWebhookController::class, 'handle'])
     ->withoutMiddleware([EnforceIdentityPolicy::class, RefreshTokenExpiration::class])
-    ->middleware(BizppurioWebhookIpWhitelist::class)
     ->name('webhook');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->group(function () {
