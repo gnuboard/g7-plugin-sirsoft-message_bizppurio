@@ -8,6 +8,12 @@ return [
         'alimtalk' => '알림톡',
     ],
 
+    // 채널 그룹 라벨 (SMS/LMS 를 "문자" 로 묶음 — 잔액부족 알림 등 채널군 표기용)
+    'channel_group' => [
+        'text' => '문자',
+        'alimtalk' => '알림톡',
+    ],
+
     // 발송 상태 (DispatchStatus enum)
     'status' => [
         'pending' => '대기',

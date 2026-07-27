@@ -13,6 +13,7 @@ use Database\Seeders\NotificationDefinitionSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
+use Plugins\Sirsoft\MessageBizppurio\Listeners\BalanceLowNotificationDataListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\LinkNotificationLogListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
@@ -447,6 +448,7 @@ class Plugin extends AbstractPlugin
             RegisterNotificationChannelsListener::class,
             SeedChannelTemplatesListener::class,
             GuestPhoneExtractListener::class,
+            BalanceLowNotificationDataListener::class,
             LinkNotificationLogListener::class,
             ValidateBizppurioSettingsListener::class,
         ];

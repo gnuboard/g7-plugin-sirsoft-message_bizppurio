@@ -9,7 +9,7 @@ declare(strict_types=1);
 |
 | Source: Bizppurio API manual "9. Status_Code" table
 | As of: 2026-07-13 (plan appendix C-3, phase 1 scope)
-| Scope: common(2000~9070) + SMS(4100~4443) + LMS(6600~6641) + Alimtalk(7000~7523).
+| Scope: common(2000~9071) + SMS(4100~4443) + LMS(6600~6641) + Alimtalk(7000~7523).
 |        RCS(8000s)/NaverTalkTalk(part of 5000s) are out of scope (follow-up D15).
 |
 */
@@ -32,6 +32,7 @@ return [
     '5005' => 'Temporary delivery error',
     '9000' => 'Temporary system error',
     '9070' => 'Insufficient balance (SMS)',
+    '9071' => 'Postpaid limit exceeded',
 
     // ── SMS report ───────────────────────────────────────
     '4100' => 'Success',

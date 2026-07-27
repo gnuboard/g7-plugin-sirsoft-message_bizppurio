@@ -33,15 +33,24 @@ class ResultCodeResolverTest extends PluginTestCase
     }
 
     /**
-     * 잔액부족(9070 문자 / 7436 알림톡)은 BalanceLow + isBalanceLow true.
+     * 잔액부족(9070 문자 / 7436 알림톡 / 9071 후불 한도초과)은 BalanceLow + isBalanceLow true.
      */
     public function test_balance_low_codes(): void
     {
-        foreach (['9070', '7436'] as $code) {
+        foreach (['9070', '7436', '9071'] as $code) {
             $this->assertSame(ResultCategory::BalanceLow, $this->resolver->categorize($code), "코드 {$code}");
             $this->assertTrue($this->resolver->isBalanceLow($code), "코드 {$code}");
             $this->assertFalse($this->resolver->isSuccess($code), "코드 {$code}");
         }
+    }
+
+    /**
+     * 후불 한도초과(9071) 는 사유 문구가 lang 에 정의되어 코드만 노출되지 않는다.
+     */
+    public function test_postpaid_limit_code_has_reason(): void
+    {
+        $this->assertNotNull($this->resolver->reason('9071'));
+        $this->assertStringContainsString('9071', $this->resolver->label('9071'));
     }
 
     /**
