@@ -54,15 +54,26 @@ class ResultCodeResolverTest extends PluginTestCase
     }
 
     /**
+     * 최신 명세 정합화로 추가된 코드(IP 오류·수신거부·발신프로필 키 무효)에 사유가 정의돼
+     * 코드만 노출되지 않는다.
+     */
+    public function test_newly_added_codes_have_reason(): void
+    {
+        foreach (['3003', '3010', '4431', '7103'] as $code) {
+            $this->assertNotNull($this->resolver->reason($code), "코드 {$code} 사유 누락");
+        }
+    }
+
+    /**
      * 일시오류 코드는 Retry.
      *
-     * 공통(5003/5004/5005/9000/3011/3013)에 더해, 알림톡 일시오류(7306 카카오 시스템오류·
-     * 7307 처리지연·7421 타임아웃·7437 메시지 요청실패)도 재시도 대상이다. 7305(성공 불확실)는
-     * 이미 발송됐을 수 있어 중복발송 위험이 있으므로 재시도 대상에서 제외한다.
+     * 공통(5002 요청 과다·5003/5004/5005/9000/3011/3013)에 더해, 알림톡 일시오류(7306 카카오
+     * 시스템오류·7307 처리지연·7421 타임아웃·7437 메시지 요청실패)도 재시도 대상이다.
+     * 7305(성공 불확실)는 이미 발송됐을 수 있어 중복발송 위험이 있으므로 재시도 대상에서 제외한다.
      */
     public function test_retryable_codes_categorized_as_retry(): void
     {
-        foreach (['5003', '5004', '5005', '9000', '3011', '3013', '7306', '7307', '7421', '7437'] as $code) {
+        foreach (['5002', '5003', '5004', '5005', '9000', '3011', '3013', '7306', '7307', '7421', '7437'] as $code) {
             $this->assertSame(ResultCategory::Retry, $this->resolver->categorize($code), "코드 {$code}");
         }
     }

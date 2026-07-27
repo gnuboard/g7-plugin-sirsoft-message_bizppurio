@@ -7,8 +7,8 @@ declare(strict_types=1);
 | Bizppurio result code → reason (English)
 |--------------------------------------------------------------------------
 |
-| Source: Bizppurio API manual "9. Status_Code" table
-| As of: 2026-07-13 (plan appendix C-3, phase 1 scope)
+| Source: Bizppurio official response-code docs (https://bizppurio.github.io/response-codes/)
+| As of: 2026-07-27 (aligned to the latest official docs; legacy manual wording corrected)
 | Scope: common(2000~9071) + SMS(4100~4443) + LMS(6600~6641) + Alimtalk(7000~7523).
 |        RCS(8000s)/NaverTalkTalk(part of 5000s) are out of scope (follow-up D15).
 |
@@ -17,16 +17,18 @@ declare(strict_types=1);
 return [
     // ── Common / send response ───────────────────────────
     '1000' => 'Success',
-    '2000' => 'Invalid request parameter',
-    '3001' => 'Missing required parameter',
+    '2000' => 'Message is invalid',
+    '3001' => 'Invalid authentication (Basic)',
     '3002' => 'Invalid token (expired/revoked)',
-    '3004' => 'Request not allowed',
-    '3005' => 'Invalid authentication',
-    '3006' => 'Account information error',
-    '3007' => 'Sender number not registered',
-    '3009' => 'Message type error',
-    '3011' => 'Temporary processing delay',
-    '3013' => 'Temporary system error',
+    '3003' => 'Invalid IP',
+    '3004' => 'Account is invalid',
+    '3005' => 'Invalid authentication (Bearer)',
+    '3006' => 'Account does not exist',
+    '3007' => 'Invalid account password',
+    '3009' => 'Account suspended',
+    '3010' => 'IP not in allowlist',
+    '3011' => 'Unknown error (Bizppurio)',
+    '3013' => 'Message not completed',
     '5003' => 'Temporary delivery error',
     '5004' => 'Temporary delivery error',
     '5005' => 'Temporary delivery error',
@@ -42,8 +44,9 @@ return [
     '4410' => 'Invalid number',
     '4414' => 'Disconnected/suspended number',
     '4420' => 'Other device error',
-    '4430' => 'Spam rejection',
-    '4443' => 'Other error',
+    '4430' => 'Spam',
+    '4431' => 'Delivery-restricted opt-out (spam)',
+    '4443' => 'Spam blocked',
 
     // ── LMS report ───────────────────────────────────────
     '6600' => 'Success',
@@ -55,10 +58,11 @@ return [
 
     // ── Alimtalk report ──────────────────────────────────
     '7000' => 'Success',
+    '7103' => 'Invalid sender profile key',
     '7106' => 'Deleted sender key',
     '7107' => 'Blocked sender key',
-    '7204' => 'Template mismatch',
-    '7206' => 'Unapproved template',
+    '7204' => 'Message content does not match template',
+    '7206' => 'Serial number format mismatch',
     '7306' => 'Kakao system error',
     '7307' => 'Processing delayed',
     '7308' => 'Phone number error',
@@ -67,5 +71,5 @@ return [
     '7421' => 'Timeout',
     '7436' => 'Insufficient wallet balance (Alimtalk)',
     '7437' => 'Message request failed',
-    '7523' => 'Other error',
+    '7523' => '080 opt-out (spam)',
 ];
