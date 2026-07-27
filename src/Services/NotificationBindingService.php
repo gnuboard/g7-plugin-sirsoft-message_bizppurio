@@ -11,13 +11,13 @@ use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioNotificatio
 /**
  * 이벤트↔알림톡 템플릿 연동(binding) 서비스 (계획서 §6-2, Phase 6 재설계 A).
  *
- * 알림 설정 알림톡 탭은 코어 기본 목록·편집 모달을 그대로 사용한다(⚑⚑ 결정 A). 연결 템플릿·
- * SMS 대체는 코어 편집 모달에 얹은 전용 칸에서 입력하고, 코어 [저장] 훅
- * (core.notification_template.filter_update_data/after_update)에 편승해 이 서비스의
- * bind/unbind 로 저장된다(별도 저장 버튼·우리 목록 API 없음).
+ * 알림 설정 알림톡 탭은 코어 기본 목록을 그대로 사용한다(⚑⚑ 결정 A). 연결 템플릿·SMS 대체는
+ * 코어 목록 행 하단에 얹은 [연결/변경] 버튼 → 우리 연결 모달에서 입력하고, 우리 API
+ * (POST notification-bindings)로 이 서비스의 bind/unbind 를 직접 호출해 저장된다
+ * (코어 저장 버튼과 무관).
  *
- * 이 서비스는 (1) 코어 편집 모달 전용 칸이 소비하는 조회 — 승인 템플릿 드롭다운(approvedTemplates)
- * 과 현재 연동 맵(all) — 및 (2) 저장 훅 리스너가 호출하는 bind/unbind 를 제공한다.
+ * 이 서비스는 (1) 연결 모달이 소비하는 조회 — 승인 템플릿 드롭다운(approvedTemplates)
+ * 과 현재 연동 맵(all) — 및 (2) 연결 모달 저장이 호출하는 bind/unbind 를 제공한다.
  *
  * 연결 대상 템플릿 드롭다운은 "발송 가능(승인) 상태" 템플릿만 노출한다 — 미승인 템플릿에
  * 연동해도 발송이 거부되기 때문. 승인 판정은 AlimtalkTemplateService 의 배지 매핑(RDY/ACT
@@ -173,11 +173,12 @@ class NotificationBindingService
     }
 
     /**
-     * 코어 편집 모달 전용 칸이 넘긴 값으로 연동을 반영합니다 (저장 훅 편승).
+     * 연결 모달이 넘긴 값으로 연동을 반영합니다.
      *
-     * 코어 알림 템플릿 [저장] 훅(after_update)에서 호출된다. 연결 템플릿 코드가 비어 있으면
-     * 연동 해제, 있으면 생성/갱신한다. 이 "빈 값=해제" 규칙 덕분에 편집 모달에서 드롭다운을
-     * "연결 안 함"으로 바꾸고 저장하면 코어 저장 한 번으로 해제까지 처리된다.
+     * 우리 연결 저장 API(NotificationBindingController::store → POST notification-bindings)에서
+     * 호출된다. 연결 템플릿 코드가 비어 있으면 연동 해제, 있으면 생성/갱신한다. 이 "빈 값=해제"
+     * 규칙 덕분에 연결 모달에서 드롭다운을 "연결 안 함"으로 바꾸고 저장하면 저장 한 번으로
+     * 해제까지 처리된다.
      *
      * @param  string  $notificationType  코어 notification_definitions.type
      * @param  string|null  $templateCode  연결할 카카오 템플릿 코드 (빈 값=해제)

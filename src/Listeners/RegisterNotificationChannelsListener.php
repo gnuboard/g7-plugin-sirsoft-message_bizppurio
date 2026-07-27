@@ -25,9 +25,9 @@ use App\Services\SettingsService;
  * ChannelManager 에 등록되어야 발화하므로, 드라이버 등록은 ServiceProvider::boot() 가
  * 담당한다(이 리스너는 채널 "노출·판정"만 책임진다).
  *
- * 알림톡 탭은 코어 기본 목록·편집 모달을 그대로 사용한다(Phase 6 재설계, 계획서 ⚑⚑ 블록 A).
- * 연결 템플릿·SMS 대체 등 알림톡 전용 설정은 코어 편집 모달에 전용 칸을 overlay 로 얹고
- * 코어 저장 훅(core.notification_template.filter_update_data/after_update)에 편승해 저장하므로,
+ * 알림톡 탭은 코어 기본 목록을 그대로 사용한다(Phase 6 재설계, 계획서 ⚑⚑ 블록 A).
+ * 연결 템플릿·SMS 대체 등 알림톡 전용 설정은 코어 목록 행 하단에 overlay 로 얹은
+ * [연결/변경] 버튼 → 우리 연결 모달 → 우리 API(notification-bindings)로 직접 저장하므로,
  * 이 리스너는 코어 목록을 숨기는 별도 플래그를 두지 않는다.
  */
 class RegisterNotificationChannelsListener implements HookListenerInterface
