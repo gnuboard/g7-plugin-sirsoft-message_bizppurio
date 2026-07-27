@@ -100,8 +100,18 @@ class BizppurioApiClient
             ->post($this->baseUrl().'/v3/message', $payload);
 
         if ($response->failed()) {
+            // 비즈뿌리오는 실패 응답에도 code·description 을 담아준다(명세). 이를 추출해
+            // 예외에 실어, 발송 이력·로그에 "왜 실패했는지"(결과코드+사유)가 남도록 한다.
+            // body 가 없거나 파싱 불가하면 HTTP 상태만 보존한다.
+            $body = $response->json();
+            $code = is_array($body) ? (string) ($body['code'] ?? '') : '';
+            $description = is_array($body) ? (string) ($body['description'] ?? '') : '';
+
             throw new BizppurioApiException(
-                __('sirsoft-message_bizppurio::messages.error.send_failed'),
+                $description !== ''
+                    ? $description
+                    : __('sirsoft-message_bizppurio::messages.error.send_failed'),
+                resultCode: $code !== '' ? $code : null,
                 httpStatus: $response->status(),
             );
         }

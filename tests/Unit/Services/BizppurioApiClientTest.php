@@ -110,6 +110,50 @@ class BizppurioApiClientTest extends PluginTestCase
         $client->sendMessage($this->payload);
     }
 
+    /**
+     * HTTP 실패 응답에 code·description 이 있으면 예외에 사유·결과코드로 담긴다.
+     *
+     * 회귀 배경: 실패 시 "메시지 발송 요청에 실패했습니다"만 뜨고 비즈뿌리오가 준 실제 사유·코드를
+     * 버려, 발송 이력·로그로 원인을 알 수 없던 문제. 실패 body 를 추출해 예외에 실어 이력에 남긴다.
+     */
+    public function test_http_실패시_응답_body_의_사유와_코드가_예외에_담긴다(): void
+    {
+        Http::fake([
+            '*/v3/message' => Http::response(
+                ['code' => 7103, 'description' => '발신 프로필 키가 유효하지 않음'],
+                400,
+            ),
+        ]);
+
+        $client = new BizppurioApiClient($this->makeToken('T'), $this->makeSettings());
+
+        try {
+            $client->sendMessage($this->payload);
+            $this->fail('예외가 발생해야 한다.');
+        } catch (BizppurioApiException $e) {
+            $this->assertSame('7103', $e->getResultCode(), '실패 body 의 code 가 예외에 담겨야 한다.');
+            $this->assertSame('발신 프로필 키가 유효하지 않음', $e->getMessage(), '실패 body 의 description 이 예외 메시지로 담겨야 한다.');
+        }
+    }
+
+    /**
+     * HTTP 실패 응답에 body 가 없으면 기본 사유로 폴백하고 결과코드는 null.
+     */
+    public function test_http_실패시_body_없으면_기본_사유_폴백(): void
+    {
+        Http::fake(['*/v3/message' => Http::response([], 500)]);
+
+        $client = new BizppurioApiClient($this->makeToken('T'), $this->makeSettings());
+
+        try {
+            $client->sendMessage($this->payload);
+            $this->fail('예외가 발생해야 한다.');
+        } catch (BizppurioApiException $e) {
+            $this->assertNull($e->getResultCode());
+            $this->assertNotSame('', $e->getMessage());
+        }
+    }
+
     public function test_영구실패_결과코드는_그대로_반환(): void
     {
         Http::fake([
