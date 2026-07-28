@@ -7,7 +7,8 @@
 #     - 카카오→발송 변환(kakao_elements 축): AlimtalkPayloadMapperTest — 본문/버튼/바로연결/title·header·item·highlight·link 변환 + #{var} 치환 + 부재 필드 생략.
 #     - 캐시 수동 초기화 엔드포인트·권한: AlimtalkTemplateControllerTest + NotificationBindingServiceTest.
 #     - template 증강: SeedChannelTemplatesListenerTest — 회원판정/기본문구/채널추가/멱등.
-#     - 연동 즉시저장·조회·권한: NotificationBindingServiceTest + NotificationBindingEndpointTest.
+#     - 연동 즉시저장·조회·권한(저장 시점 카카오 승인 재검증 포함): NotificationBindingServiceTest +
+#       NotificationBindingEndpointTest.
 #     - 채널 메타(is_test_mode): RegisterNotificationChannelsListenerTest.
 #     - overlay 전용칸·배너·i18n·무오염: notification_tab_binding.test.tsx.
 #   e2e_* 축(브라우저 왕복: 편집 열기→드롭다운 선택→즉시 저장→toast→배너)은 실제 카카오 발신
@@ -107,6 +108,8 @@ effects:
   - store_creates_or_updates_binding_immediately
   - store_empty_code_unbinds
   - only_approved_templates_offered_as_options
+  - bind_rejects_unapproved_template_code
+  - bind_rejects_when_kakao_lookup_fails
   - bindings_map_returned_for_prefill
   - view_permission_required_for_read
   - manage_permission_required_for_store
