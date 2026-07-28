@@ -130,18 +130,47 @@ class NotificationBindingService
     /**
      * 알림에 알림톡 템플릿을 연결(생성/갱신)합니다 (연동 모달 저장).
      *
+     * 저장 전 카카오 승인 상태(RDY/ACT)를 재검증한다 — 드롭다운이 승인 템플릿만 보여주지만
+     * 그 필터는 화면 단계일 뿐이라, API 를 직접 호출하면 미승인 템플릿도 저장될 수 있었다(회귀).
+     * 카카오 조회 자체가 실패(장애·자격증명 미설정)하면 승인 여부를 판정할 수 없으므로 안전측으로
+     * 저장을 거부한다 — 조회 실패를 "승인됨"으로 잘못 해석해 미승인 템플릿이 새는 것을 막는다.
+     *
      * @param  string  $notificationType  코어 notification_definitions.type
      * @param  array<string, mixed>  $data  template_code / template_name / fallback_sms_enabled
      * @return BizppurioNotificationBinding 저장된 연동
+     *
+     * @throws BizppurioApiException 카카오 조회 실패, 또는 미승인·존재하지 않는 템플릿 코드
      */
     public function bind(string $notificationType, array $data): BizppurioNotificationBinding
     {
+        $templateCode = (string) $data['template_code'];
+
+        $this->assertSendable($templateCode);
+
         return $this->bindings->upsert($notificationType, self::CHANNEL, [
-            'template_code' => (string) $data['template_code'],
+            'template_code' => $templateCode,
             'template_name' => (string) $data['template_name'],
             'fallback_sms_enabled' => (bool) ($data['fallback_sms_enabled'] ?? false),
             'is_active' => true,
         ]);
+    }
+
+    /**
+     * 템플릿 코드가 발송 가능(승인) 상태인지 검증합니다. 아니면 예외를 던집니다.
+     *
+     * @param  string  $templateCode  검증할 카카오 템플릿 코드
+     *
+     * @throws BizppurioApiException 카카오 조회 실패, 또는 미승인·존재하지 않는 템플릿 코드
+     */
+    private function assertSendable(string $templateCode): void
+    {
+        $sendableCodes = array_column($this->approvedTemplates(), 'template_code');
+
+        if (! in_array($templateCode, $sendableCodes, true)) {
+            throw new BizppurioApiException(
+                __('sirsoft-message_bizppurio::messages.error.template_not_sendable', ['code' => $templateCode]),
+            );
+        }
     }
 
     /**
@@ -184,6 +213,8 @@ class NotificationBindingService
      * @param  string|null  $templateCode  연결할 카카오 템플릿 코드 (빈 값=해제)
      * @param  string|null  $templateName  템플릿 이름 스냅샷 (고아 감지용)
      * @param  bool  $fallbackSmsEnabled  실패 시 SMS 대체발송 여부
+     *
+     * @throws BizppurioApiException 카카오 조회 실패, 또는 미승인·존재하지 않는 템플릿 코드 (해제 시에는 미발생)
      */
     public function applyFromTemplateSave(
         string $notificationType,

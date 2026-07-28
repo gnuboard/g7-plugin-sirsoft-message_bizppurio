@@ -65,6 +65,19 @@ class ResultCodeResolverTest extends PluginTestCase
     }
 
     /**
+     * 재시도 대상으로 분류된 코드는 전부 사유가 lang 에 정의돼 있어야 한다(코드값만 노출 금지).
+     *
+     * 회귀: RETRYABLE_CODES 에 5002 가 분류돼 있었으나 lang/{ko,en}/result_codes.php 와 ja
+     * 번들에 5002 키가 누락되어 label('5002') 가 사유 없이 코드만 반환하던 결함.
+     */
+    public function test_all_retryable_codes_have_reason(): void
+    {
+        foreach (['5002', '5003', '5004', '5005', '9000', '3011', '3013', '7306', '7307', '7421', '7437'] as $code) {
+            $this->assertNotNull($this->resolver->reason($code), "코드 {$code} 사유 누락");
+        }
+    }
+
+    /**
      * 일시오류 코드는 Retry.
      *
      * 공통(5002 요청 과다·5003/5004/5005/9000/3011/3013)에 더해, 알림톡 일시오류(7306 카카오

@@ -5,7 +5,10 @@ namespace Plugins\Sirsoft\MessageBizppurio\Tests\Feature\Notification;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use Mockery;
+use Mockery\MockInterface;
 use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioNotificationBinding;
+use Plugins\Sirsoft\MessageBizppurio\Services\AlimtalkTemplateService;
 use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 
 /**
@@ -19,6 +22,37 @@ use Plugins\Sirsoft\MessageBizppurio\Tests\PluginTestCase;
 class NotificationBindingEndpointTest extends PluginTestCase
 {
     private const BASE = '/api/plugins/sirsoft-message_bizppurio/admin/notification-bindings';
+
+    /**
+     * AlimtalkTemplateService mock 을 컨테이너에 바인딩하고 반환한다.
+     *
+     * bind() 가 저장 전 카카오 승인 목록을 조회하므로(회귀 방지 재검증), 실제 kapi 호출 없이
+     * 저장 경로를 검증하려면 이 mock 으로 승인 템플릿 목록을 지정해야 한다.
+     */
+    private function mockTemplateService(): MockInterface
+    {
+        $mock = Mockery::mock(AlimtalkTemplateService::class);
+        $this->app->instance(AlimtalkTemplateService::class, $mock);
+
+        return $mock;
+    }
+
+    /**
+     * 지정 template_code 목록을 승인(ACT) 상태로 반환하는 mock 을 등록한다.
+     *
+     * @param  array<int, string>  $codes  승인 처리할 template_code 목록
+     */
+    private function stubApprovedTemplates(array $codes): void
+    {
+        $templates = array_map(
+            fn (string $code) => ['templateCode' => $code, 'templateName' => $code, 'serviceStatus' => 'ACT'],
+            $codes,
+        );
+
+        $this->mockTemplateService()
+            ->shouldReceive('list')
+            ->andReturn(['templates' => $templates, 'pagination' => []]);
+    }
 
     /**
      * 지정 권한 식별자들을 가진 admin 사용자를 만듭니다.
@@ -126,6 +160,7 @@ class NotificationBindingEndpointTest extends PluginTestCase
 
     public function test_manage_권한으로_연동을_즉시_저장한다(): void
     {
+        $this->stubApprovedTemplates(['TW_1236']);
         $admin = $this->adminWith([
             'sirsoft-message_bizppurio.messaging.view',
             'sirsoft-message_bizppurio.messaging.manage',
@@ -147,6 +182,29 @@ class NotificationBindingEndpointTest extends PluginTestCase
         ]);
     }
 
+    public function test_미승인_템플릿_코드로_저장하면_422이고_저장되지_않는다(): void
+    {
+        // 회귀: 화면 드롭다운은 승인 템플릿만 보여주지만, 그 필터를 우회해 API 를 직접
+        // 호출하면 미승인 template_code 도 저장되던 결함. bind() 서버측 재검증으로 차단.
+        $this->stubApprovedTemplates(['TW_OTHER']);
+        $admin = $this->adminWith([
+            'sirsoft-message_bizppurio.messaging.view',
+            'sirsoft-message_bizppurio.messaging.manage',
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($admin))->postJson(self::BASE, [
+            'notification_type' => 'welcome',
+            'template_code' => 'TW_UNAPPROVED',
+            'template_name' => '미승인',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('bizppurio_notification_bindings', [
+            'notification_type' => 'welcome',
+            'template_code' => 'TW_UNAPPROVED',
+        ]);
+    }
+
     public function test_빈_코드로_저장하면_연동을_해제한다(): void
     {
         BizppurioNotificationBinding::create([
@@ -163,6 +221,7 @@ class NotificationBindingEndpointTest extends PluginTestCase
             'sirsoft-message_bizppurio.messaging.manage',
         ]);
 
+        // 해제는 카카오 승인 조회를 거치지 않으므로 mock 불필요.
         $response = $this->withHeaders($this->authHeaders($admin))->postJson(self::BASE, [
             'notification_type' => 'welcome',
             'template_code' => '',
@@ -182,6 +241,7 @@ class NotificationBindingEndpointTest extends PluginTestCase
             'sirsoft-message_bizppurio.messaging.manage',
         ]);
 
+        // FormRequest 검증(notification_type required)이 서비스 호출보다 먼저 실패하므로 mock 불필요.
         $response = $this->withHeaders($this->authHeaders($admin))->postJson(self::BASE, [
             'template_code' => 'TW_1236',
         ]);

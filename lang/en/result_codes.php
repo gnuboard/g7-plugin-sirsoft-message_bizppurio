@@ -29,6 +29,7 @@ return [
     '3010' => 'IP not in allowlist',
     '3011' => 'Unknown error (Bizppurio)',
     '3013' => 'Message not completed',
+    '5002' => 'Too many requests',
     '5003' => 'Temporary delivery error',
     '5004' => 'Temporary delivery error',
     '5005' => 'Temporary delivery error',

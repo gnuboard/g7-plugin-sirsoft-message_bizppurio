@@ -83,15 +83,17 @@ class NotificationBindingController extends AdminBaseController
     {
         $validated = $request->validated();
 
-        $this->service->applyFromTemplateSave(
-            $validated['notification_type'],
-            $validated['template_code'] ?? null,
-            $validated['template_name'] ?? null,
-            (bool) ($validated['fallback_sms_enabled'] ?? false),
-        );
+        return $this->guard(function () use ($validated) {
+            $this->service->applyFromTemplateSave(
+                $validated['notification_type'],
+                $validated['template_code'] ?? null,
+                $validated['template_name'] ?? null,
+                (bool) ($validated['fallback_sms_enabled'] ?? false),
+            );
 
-        return ResponseHelper::success('messages.binding.saved', [
-            'bindings' => $this->service->all(),
-        ]);
+            return ResponseHelper::success('messages.binding.saved', [
+                'bindings' => $this->service->all(),
+            ]);
+        });
     }
 }

@@ -162,9 +162,22 @@ class NotificationBindingServiceTest extends PluginTestCase
         $this->assertNotContains('TW_D', $codes, 'REJ(반려)는 제외되어야 한다.');
     }
 
+    /**
+     * bind() 승인 검증을 통과시키는 템플릿 목록으로 서비스를 만듭니다 (bind 계열 테스트 공용 fixture).
+     *
+     * @param  array<int, string>  $approvedCodes  승인(발송 가능) 처리할 template_code 목록
+     */
+    private function makeServiceWithApprovedCodes(array $approvedCodes): NotificationBindingService
+    {
+        return $this->makeService(array_map(
+            fn (string $code) => ['templateCode' => $code, 'templateName' => $code, 'serviceStatus' => 'ACT'],
+            $approvedCodes,
+        ));
+    }
+
     public function test_bind는_연동을_생성하고_unbind는_삭제한다(): void
     {
-        $service = $this->makeService();
+        $service = $this->makeServiceWithApprovedCodes(['TW_1236']);
 
         $service->bind('welcome', [
             'template_code' => 'TW_1236',
@@ -189,7 +202,7 @@ class NotificationBindingServiceTest extends PluginTestCase
 
     public function test_bind는_같은_알림에_대해_갱신한다(): void
     {
-        $service = $this->makeService();
+        $service = $this->makeServiceWithApprovedCodes(['TW_1', 'TW_2']);
 
         $service->bind('welcome', ['template_code' => 'TW_1', 'template_name' => '첫번째']);
         $service->bind('welcome', ['template_code' => 'TW_2', 'template_name' => '두번째']);
@@ -201,9 +214,53 @@ class NotificationBindingServiceTest extends PluginTestCase
         ]);
     }
 
+    public function test_bind는_미승인_템플릿이면_예외를_던지고_저장하지_않는다(): void
+    {
+        // 회귀: bind() 가 승인 상태를 재검증하지 않아, 드롭다운(화면) 필터를 우회해 API 를
+        // 직접 호출하면 미승인 템플릿도 저장되던 결함.
+        $service = $this->makeServiceWithApprovedCodes(['TW_OTHER']);
+
+        $this->expectException(\Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException::class);
+
+        try {
+            $service->bind('welcome', ['template_code' => 'TW_UNAPPROVED', 'template_name' => '미승인']);
+        } finally {
+            $this->assertDatabaseMissing('bizppurio_notification_bindings', [
+                'notification_type' => 'welcome',
+                'template_code' => 'TW_UNAPPROVED',
+            ]);
+        }
+    }
+
+    public function test_bind는_카카오_조회_실패시_예외를_던지고_저장하지_않는다(): void
+    {
+        // 승인 여부를 판정할 수 없으면 안전측으로 저장을 거부한다(조회 실패="승인됨" 오인 방지).
+        $throwingTemplates = Mockery::mock(AlimtalkTemplateService::class);
+        $throwingTemplates->shouldReceive('list')
+            ->andThrow(new \Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException('자격증명 미설정'));
+
+        $service = new NotificationBindingService(
+            new BizppurioNotificationBindingRepository,
+            $throwingTemplates,
+            $this->fakeKakaoContent(),
+        );
+
+        $this->expectException(\Plugins\Sirsoft\MessageBizppurio\Exceptions\BizppurioApiException::class);
+
+        try {
+            $service->bind('welcome', ['template_code' => 'TW_1', 'template_name' => '가입환영']);
+        } finally {
+            $this->assertDatabaseMissing('bizppurio_notification_bindings', [
+                'notification_type' => 'welcome',
+                'template_code' => 'TW_1',
+            ]);
+        }
+    }
+
     public function test_apply_from_template_save는_코드가_있으면_연동을_저장한다(): void
     {
-        $this->makeService()->applyFromTemplateSave('welcome', 'TW_9', '가입환영', true);
+        $this->makeServiceWithApprovedCodes(['TW_9'])
+            ->applyFromTemplateSave('welcome', 'TW_9', '가입환영', true);
 
         $this->assertDatabaseHas('bizppurio_notification_bindings', [
             'notification_type' => 'welcome',
@@ -215,10 +272,10 @@ class NotificationBindingServiceTest extends PluginTestCase
 
     public function test_apply_from_template_save는_코드가_비면_연동을_해제한다(): void
     {
-        $service = $this->makeService();
+        $service = $this->makeServiceWithApprovedCodes(['TW_1']);
         $service->bind('welcome', ['template_code' => 'TW_1', 'template_name' => '기존']);
 
-        // 편집 모달에서 "연결 안 함"으로 저장 → 빈 코드 → 해제
+        // 편집 모달에서 "연결 안 함"으로 저장 → 빈 코드 → 해제 (승인 검증 대상 아님)
         $service->applyFromTemplateSave('welcome', '', null, false);
 
         $this->assertDatabaseMissing('bizppurio_notification_bindings', [

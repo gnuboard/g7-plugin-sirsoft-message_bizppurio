@@ -80,6 +80,7 @@ return [
         'kakao_credentials_missing' => '카카오 관리 API 사용을 위해 아이디와 API 키를 먼저 설정하세요.',
         'kakao_request_failed' => '카카오 관리 API 요청에 실패했습니다.',
         'sender_key_missing' => '알림톡 발신프로필 키를 먼저 설정하세요.',
+        'template_not_sendable' => '발송 가능(승인) 상태가 아닌 템플릿입니다. (코드: :code)',
     ],
 
     // 발송 건너뜀 (채널 드라이버 send() 사전 조건 미충족 — 코어 발송 이력에 "실패"로 기록됨)

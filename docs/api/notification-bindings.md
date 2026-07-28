@@ -144,12 +144,13 @@ HTTP/1.1 200
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-message_bizppurio.messaging.manage`)이 없는 경우 |
 | 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 422 | Unprocessable Entity | `template_code` 가 카카오 승인 상태(RDY/ACT)가 아니거나, 카카오 승인 목록 조회 자체가 실패(자격증명 미설정·장애)한 경우 (`error.kakao_message`/`error.result_code`) |
 
 <!-- @generated:end -->
 
 **설명**
 
-알림에 알림톡 템플릿을 연결(생성/갱신)한다. 알림톡 탭 편집 모달의 [저장] 이 호출한다. `(notification_type, alimtalk)` 당 1개 연결이므로, 이미 연결이 있으면 갱신(upsert)된다. 저장은 코어 알림 설정 저장 버튼과 무관하게 이 API 로 직접 수행되어 코어 우회가 없다(§6-2). 승인되지 않은 템플릿 코드도 저장 자체는 가능하나(운영자 선택 자유), 편집 모달 드롭다운은 승인(RDY/ACT) 템플릿만 노출해 실수를 방지한다.
+알림에 알림톡 템플릿을 연결(생성/갱신)한다. 알림톡 탭 편집 모달의 [저장] 이 호출한다. `(notification_type, alimtalk)` 당 1개 연결이므로, 이미 연결이 있으면 갱신(upsert)된다. 저장은 코어 알림 설정 저장 버튼과 무관하게 이 API 로 직접 수행되어 코어 우회가 없다(§6-2). 저장 전 카카오 승인 상태(RDY/ACT)를 서버측에서 재검증하며, 미승인 코드거나 카카오 조회 자체가 실패하면 422 로 거부한다(편집 모달 드롭다운의 승인 템플릿 필터는 화면 단계일 뿐이라, 이를 우회한 직접 API 호출로 미승인 템플릿이 저장되는 것을 막기 위함). 연결 해제(`template_code` 빈 값)는 이 검증을 거치지 않는다.
 
 
 ### GET /api/plugins/sirsoft-message_bizppurio/admin/notification-bindings/approved-templates

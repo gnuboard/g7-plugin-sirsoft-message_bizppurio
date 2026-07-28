@@ -80,6 +80,7 @@ return [
         'kakao_credentials_missing' => 'Please set the ID and API key to use the Kakao management API.',
         'kakao_request_failed' => 'The Kakao management API request failed.',
         'sender_key_missing' => 'Please set the alimtalk sender profile key first.',
+        'template_not_sendable' => 'This template is not in a sendable (approved) state. (code: :code)',
     ],
 
     // Send skipped (channel driver send() precondition not met — recorded as "Failed" in core notification log)
