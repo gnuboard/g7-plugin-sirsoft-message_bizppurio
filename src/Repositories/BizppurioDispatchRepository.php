@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Plugins\Sirsoft\MessageBizppurio\Repositories;
 
+use App\Repositories\Concerns\PaginatesWithDeferredJoin;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Plugins\Sirsoft\MessageBizppurio\Models\BizppurioDispatch;
@@ -14,6 +15,8 @@ use Plugins\Sirsoft\MessageBizppurio\Repositories\Contracts\BizppurioDispatchRep
  */
 class BizppurioDispatchRepository implements BizppurioDispatchRepositoryInterface
 {
+    use PaginatesWithDeferredJoin;
+
     /**
      * 발송 이력 1건을 생성합니다.
      *
@@ -86,7 +89,19 @@ class BizppurioDispatchRepository implements BizppurioDispatchRepositoryInterfac
             });
         }
 
-        return $query->orderByDesc('created_at')->paginate($perPage);
+        // 발송 이력은 발송할 때마다 쌓여 뒤쪽 페이지가 깊어진다. 지연 조인으로 OFFSET 구간에서는
+        // 키 컬럼만 훑고, 본문·요청/webhook 페이로드 같은 넓은 컬럼은 이번 페이지 행에서만 읽는다.
+        // 정렬 스펙 끝에 키 컬럼이 자동으로 덧붙어 동률(같은 시각 발송) 구간의 전순서도 보장된다.
+        //
+        // columns 를 좁히지 않은 이유: 이 목록을 소비하는 화면이 아직 없어 표시 컬럼 계약이
+        // 확정되지 않았다. OFFSET 구간의 넓은 컬럼 읽기는 지연 조인으로 이미 사라졌으므로,
+        // 컬럼 프루닝은 화면이 생겨 실제 사용 컬럼이 정해질 때 얹는다.
+        return $this->paginateWithDeferredJoin(
+            query: $query,
+            columns: ['*'],
+            sort: [['column' => 'created_at', 'direction' => 'desc']],
+            perPage: $perPage,
+        );
     }
 
     /**
