@@ -7,7 +7,8 @@
     "extends": "_admin_base",
     "meta": {
         "title": "$t:sirsoft-message_bizppurio.settings.title",
-        "description": "$t:sirsoft-message_bizppurio.settings.description"
+        "description": "$t:sirsoft-message_bizppurio.settings.description",
+        "_e2e_allow": "e2e:allow (§529) 연결 확인 필드·hasChanges 가드 추가는 레이아웃 회귀테스트(plugin_settings.test.tsx) + PHPUnit Feature(TokenCheckEndpointTest·InvalidateTokenOnSettingsSaveListenerTest)로 커버. 실연동 Playwright는 계획서 §9 방침에 따라 PO 직접 수행(인증·발송 환경 필요) 단계에서 도입 예정 — tests/scenarios/plugin-settings.yaml 상단 audit:allow 사유 참고."
     },
     "init_actions": [
         {
@@ -503,6 +504,136 @@
                                                         "if": "{{_local.errors?.password}}",
                                                         "props": { "className": "mt-1 text-sm text-red-600 dark:text-red-400" },
                                                         "text": "{{_local.errors?.password?.[0] ?? ''}}"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "field_connection_check",
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": { "className": "grid grid-cols-1 lg:grid-cols-12 gap-4 items-start" },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "lg:col-span-4" },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Label",
+                                                        "props": { "className": "form-label" },
+                                                        "text": "$t:sirsoft-message_bizppurio.settings.fields.connection_check.label"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": { "className": "form-hint" },
+                                                        "text": "$t:sirsoft-message_bizppurio.settings.fields.connection_check.hint"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": { "className": "lg:col-span-8 flex lg:justify-end" },
+                                                "children": [
+                                                    {
+                                                        "id": "connection_check_button",
+                                                        "type": "basic",
+                                                        "name": "Button",
+                                                        "props": {
+                                                            "type": "button",
+                                                            "disabled": "{{_local.tokenChecking}}",
+                                                            "className": "btn btn-outline btn-sm flex-center gap-1.5"
+                                                        },
+                                                        "actions": [
+                                                            {
+                                                                "type": "click",
+                                                                "handler": "sequence",
+                                                                "actions": [
+                                                                    {
+                                                                        "if": "{{_local.hasChanges}}",
+                                                                        "handler": "toast",
+                                                                        "params": {
+                                                                            "type": "warning",
+                                                                            "message": "$t:sirsoft-message_bizppurio.settings.fields.connection_check.unsaved_changes"
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "if": "{{!_local.hasChanges}}",
+                                                                        "handler": "setState",
+                                                                        "params": { "target": "local", "tokenChecking": true }
+                                                                    },
+                                                                    {
+                                                                        "if": "{{!_local.hasChanges}}",
+                                                                        "handler": "apiCall",
+                                                                        "auth_required": true,
+                                                                        "target": "/api/plugins/sirsoft-message_bizppurio/admin/token/check",
+                                                                        "params": { "method": "POST" },
+                                                                        "onSuccess": [
+                                                                            {
+                                                                                "handler": "setState",
+                                                                                "params": { "target": "local", "tokenChecking": false }
+                                                                            },
+                                                                            {
+                                                                                "handler": "toast",
+                                                                                "params": {
+                                                                                    "type": "success",
+                                                                                    "message": "$t:sirsoft-message_bizppurio.settings.fields.connection_check.success"
+                                                                                }
+                                                                            }
+                                                                        ],
+                                                                        "onError": [
+                                                                            {
+                                                                                "handler": "setState",
+                                                                                "params": { "target": "local", "tokenChecking": false }
+                                                                            },
+                                                                            {
+                                                                                "handler": "toast",
+                                                                                "params": {
+                                                                                    "type": "error",
+                                                                                    "message": "{{error.message ?? '$t:sirsoft-message_bizppurio.settings.fields.connection_check.failed'}}"
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Icon",
+                                                                "if": "{{_local.tokenChecking}}",
+                                                                "props": {
+                                                                    "name": "spinner",
+                                                                    "className": "text-sm animate-spin"
+                                                                }
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Icon",
+                                                                "if": "{{!_local.tokenChecking}}",
+                                                                "props": {
+                                                                    "name": "plug",
+                                                                    "size": "sm"
+                                                                }
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "if": "{{!_local.tokenChecking}}",
+                                                                "text": "$t:sirsoft-message_bizppurio.settings.fields.connection_check.button"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "if": "{{_local.tokenChecking}}",
+                                                                "text": "$t:sirsoft-message_bizppurio.settings.fields.connection_check.checking"
+                                                            }
+                                                        ]
                                                     }
                                                 ]
                                             }

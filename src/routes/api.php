@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\AlimtalkTemplateController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\DispatchResultController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\NotificationBindingController;
+use Plugins\Sirsoft\MessageBizppurio\Controllers\Admin\TokenCheckController;
 use Plugins\Sirsoft\MessageBizppurio\Controllers\BizppurioWebhookController;
 
 /*
@@ -139,4 +140,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum', 'admin'])->g
             Route::post('/lookup', [DispatchResultController::class, 'lookup'])->name('lookup');
         });
     });
+
+    // 인증 토큰 재검증 — 저장된 계정/비밀번호가 유효한지 그 자리에서 확인한다(설정
+    // 화면 "연결 확인" 버튼). 캐시를 거치지 않고 매번 /v1/token 을 새로 호출하므로
+    // 조회가 아닌 쓰기 성격에 준해 messaging.manage 권한을 요구한다.
+    Route::post('/token/check', [TokenCheckController::class, 'check'])
+        ->middleware('permission:admin,sirsoft-message_bizppurio.messaging.manage')
+        ->name('token.check');
 });

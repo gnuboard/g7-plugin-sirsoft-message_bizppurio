@@ -74,9 +74,11 @@ return [
     'error' => [
         'credentials_missing' => 'Please set the Bizppurio ID and password first.',
         'token_issue_failed' => 'Failed to issue the Bizppurio authentication token.',
+        'token_issue_failed_with_reason' => 'Failed to issue the Bizppurio authentication token. (:reason)',
         'send_failed' => 'Failed to send the message.',
         'send_retryable' => 'Message delivery temporarily failed. (code: :code)',
         'invalid_response' => 'Unable to parse the Bizppurio response.',
+        'connection_failed' => 'Unable to connect to the Bizppurio server. Please try again later.',
         'kakao_credentials_missing' => 'Please set the ID and API key to use the Kakao management API.',
         'kakao_request_failed' => 'The Kakao management API request failed.',
         'sender_key_missing' => 'Please set the alimtalk sender profile key first.',
@@ -101,5 +103,10 @@ return [
     // Dispatch template content cache (AlimtalkTemplateController::clearCache response)
     'cache' => [
         'cleared' => 'Alimtalk template content cache cleared. The latest content will apply from the next dispatch.',
+    ],
+
+    // Connection check (TokenCheckController response)
+    'token_check' => [
+        'success' => 'Authentication verified successfully. The ID and password are correct.',
     ],
 ];

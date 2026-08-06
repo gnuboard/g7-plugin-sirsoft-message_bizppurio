@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Plugins\Sirsoft\MessageBizppurio\Http\Middleware\BizppurioWebhookIpWhitelist;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\BalanceLowNotificationDataListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\GuestPhoneExtractListener;
+use Plugins\Sirsoft\MessageBizppurio\Listeners\InvalidateTokenOnSettingsSaveListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\LinkNotificationLogListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\RegisterNotificationChannelsListener;
 use Plugins\Sirsoft\MessageBizppurio\Listeners\SeedChannelTemplatesListener;
@@ -439,6 +440,7 @@ class Plugin extends AbstractPlugin
      * - GuestPhoneExtractListener: 비회원 주문 전화번호 주입(Phase 3)
      * - LinkNotificationLogListener: 코어 알림 로그↔dispatch 연결(A-2 — 발송 이력 결과 주입 연결고리)
      * - ValidateBizppurioSettingsListener: 환경설정 검증
+     * - InvalidateTokenOnSettingsSaveListener: 설정 저장 시 인증 토큰 캐시 무효화
      *
      * @return array<class-string>
      */
@@ -451,6 +453,7 @@ class Plugin extends AbstractPlugin
             BalanceLowNotificationDataListener::class,
             LinkNotificationLogListener::class,
             ValidateBizppurioSettingsListener::class,
+            InvalidateTokenOnSettingsSaveListener::class,
         ];
     }
 

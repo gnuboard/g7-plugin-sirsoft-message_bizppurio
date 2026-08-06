@@ -31,8 +31,17 @@
         "hint": "The Bizppurio account ID used for both sending and Kakao management."
       },
       "password": {
-        "label": "Password",
-        "hint": "The Bizppurio password used to issue the sending token."
+        "label": "Bizppurio Module Password",
+        "hint": "Please enter the Bizppurio module password. (Bizppurio console > Module Integration Settings > Change Module Password)"
+      },
+      "connection_check": {
+        "label": "Connection Check",
+        "hint": "Click to instantly verify the saved ID and password. (Only reflects saved values)",
+        "button": "Check Connection",
+        "checking": "Checking...",
+        "success": "Authentication verified successfully. The ID and password are correct.",
+        "failed": "Failed to verify authentication.",
+        "unsaved_changes": "Please save your changes first."
       },
       "api_key": {
         "label": "API Key",
