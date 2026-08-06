@@ -47,7 +47,7 @@
           "id": "bizppurio_ecommerce_status_banner",
           "type": "basic",
           "name": "Div",
-          "if": "{{['sms','alimtalk'].includes(_local.activeNotificationChannel ?? query.channel ?? '') && ((availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.readiness?.ready === false || (availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.is_test_mode === true)}}",
+          "if": "{{['sms','alimtalk'].includes(query.channel ?? '') && ((availableChannels?.data?.channels ?? []).find(c => c.id === (query.channel))?.readiness?.ready === false || (availableChannels?.data?.channels ?? []).find(c => c.id === (query.channel))?.is_test_mode === true)}}",
           "props": {
             "className": "mt-4 mb-3 space-y-2"
           },
@@ -56,7 +56,7 @@
               "id": "bizppurio_ecommerce_banner_not_ready",
               "type": "basic",
               "name": "Div",
-              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.readiness?.ready === false}}",
+              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (query.channel))?.readiness?.ready === false}}",
               "props": {
                 "className": "flex-between gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700"
               },
@@ -111,7 +111,7 @@
               "id": "bizppurio_ecommerce_banner_test_mode",
               "type": "basic",
               "name": "Div",
-              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (_local.activeNotificationChannel ?? query.channel))?.is_test_mode === true}}",
+              "if": "{{(availableChannels?.data?.channels ?? []).find(c => c.id === (query.channel))?.is_test_mode === true}}",
               "props": {
                 "className": "flex-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700"
               },
@@ -142,7 +142,7 @@
           "comment": "알림톡 탭 상시 안내 박스 — 이 화면에서 무엇을 하는지(각 알림에 승인 템플릿을 연결). alimtalk 탭일 때만. 배너(빨강/노랑)와 구분되게 연한 파랑 정보 박스.",
           "type": "basic",
           "name": "Div",
-          "if": "{{(_local.activeNotificationChannel ?? query.channel) === 'alimtalk'}}",
+          "if": "{{(query.channel) === 'alimtalk'}}",
           "props": {
             "className": "flex items-center gap-2 mt-3 mb-1 p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800"
           },
