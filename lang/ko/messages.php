@@ -74,9 +74,11 @@ return [
     'error' => [
         'credentials_missing' => '비즈뿌리오 아이디와 비밀번호를 먼저 설정하세요.',
         'token_issue_failed' => '비즈뿌리오 인증 토큰 발급에 실패했습니다.',
+        'token_issue_failed_with_reason' => '비즈뿌리오 인증 토큰 발급에 실패했습니다. (:reason)',
         'send_failed' => '메시지 발송 요청에 실패했습니다.',
         'send_retryable' => '메시지 발송이 일시적으로 실패했습니다. (코드: :code)',
         'invalid_response' => '비즈뿌리오 응답을 해석할 수 없습니다.',
+        'connection_failed' => '비즈뿌리오 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.',
         'kakao_credentials_missing' => '카카오 관리 API 사용을 위해 아이디와 API 키를 먼저 설정하세요.',
         'kakao_request_failed' => '카카오 관리 API 요청에 실패했습니다.',
         'sender_key_missing' => '알림톡 발신프로필 키를 먼저 설정하세요.',
@@ -101,5 +103,10 @@ return [
     // 발송용 템플릿 내용 캐시 (AlimtalkTemplateController::clearCache 응답)
     'cache' => [
         'cleared' => '알림톡 템플릿 내용 캐시를 초기화했습니다. 다음 발송부터 최신 내용이 반영됩니다.',
+    ],
+
+    // 연결 확인 (TokenCheckController 응답)
+    'token_check' => [
+        'success' => '인증이 정상적으로 확인되었습니다. 아이디와 비밀번호가 올바릅니다.',
     ],
 ];

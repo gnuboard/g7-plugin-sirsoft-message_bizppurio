@@ -44,6 +44,14 @@ class BizppurioTokenServiceTest extends PluginTestCase
             }
         );
 
+        $mock->shouldReceive('put')->andReturnUsing(
+            function (string $key, $value) use (&$store) {
+                $store[$key] = $value;
+
+                return true;
+            }
+        );
+
         return $mock;
     }
 
@@ -156,6 +164,85 @@ class BizppurioTokenServiceTest extends PluginTestCase
 
         $this->expectException(BizppurioApiException::class);
         $service->getToken();
+    }
+
+    public function test_verifyCredentials는_캐시를_거치지_않고_재발급한다(): void
+    {
+        Http::fake([
+            '*/v1/token' => Http::response(['accesstoken' => 'FRESH_TOKEN', 'type' => 'Bearer'], 200),
+        ]);
+
+        $store = ['bizppurio:token' => 'STALE_TOKEN'];
+        $service = new BizppurioTokenService(
+            $this->makeCache($store),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
+        );
+
+        $this->assertSame('FRESH_TOKEN', $service->verifyCredentials());
+        Http::assertSentCount(1);
+        $this->assertSame('FRESH_TOKEN', $store['bizppurio:token']);
+    }
+
+    public function test_verifyCredentials_실패시_예외를_전파하고_캐시를_건드리지_않는다(): void
+    {
+        Http::fake(['*/v1/token' => Http::response([], 500)]);
+
+        $store = ['bizppurio:token' => 'EXISTING_TOKEN'];
+        $service = new BizppurioTokenService(
+            $this->makeCache($store),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
+        );
+
+        try {
+            $service->verifyCredentials();
+            $this->fail('예외가 발생해야 합니다.');
+        } catch (BizppurioApiException $e) {
+            // 실패 시 캐시는 그대로 보존 — 발송이 기존 토큰(만료 전까지)을 계속 사용
+            $this->assertSame('EXISTING_TOKEN', $store['bizppurio:token']);
+        }
+    }
+
+    public function test_토큰_발급_실패시_비즈뿌리오_사유가_메시지에_포함된다(): void
+    {
+        Http::fake([
+            '*/v1/token' => Http::response(['code' => '3007', 'description' => 'invalid password'], 401),
+        ]);
+
+        $store = [];
+        $service = new BizppurioTokenService(
+            $this->makeCache($store),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
+        );
+
+        try {
+            $service->getToken();
+            $this->fail('예외가 발생해야 합니다.');
+        } catch (BizppurioApiException $e) {
+            $this->assertStringContainsString('invalid password', $e->getMessage());
+            $this->assertSame('3007', $e->getResultCode());
+        }
+    }
+
+    public function test_토큰_발급_실패시_사유_없으면_고정_메시지로_폴백한다(): void
+    {
+        Http::fake(['*/v1/token' => Http::response([], 500)]);
+
+        $store = [];
+        $service = new BizppurioTokenService(
+            $this->makeCache($store),
+            $this->makeSettings(['bizppurio_id' => 'acct', 'password' => 'pw', 'is_test_mode' => true]),
+        );
+
+        try {
+            $service->getToken();
+            $this->fail('예외가 발생해야 합니다.');
+        } catch (BizppurioApiException $e) {
+            $this->assertSame(
+                __('sirsoft-message_bizppurio::messages.error.token_issue_failed'),
+                $e->getMessage()
+            );
+            $this->assertNull($e->getResultCode());
+        }
     }
 
     protected function tearDown(): void

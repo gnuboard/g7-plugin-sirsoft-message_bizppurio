@@ -92,6 +92,27 @@ class BizppurioTokenService
     }
 
     /**
+     * 현재 저장된 자격증명으로 토큰 발급을 즉시 재검증합니다.
+     *
+     * 캐시를 거치지 않고 매번 `/v1/token` 을 새로 호출한다(관리자가 계정/비밀번호가
+     * 유효한지 그 자리에서 확인하려는 목적 — 설정 화면 "연결 확인" 버튼이 소비).
+     * 검증에 성공하면 새로 발급된 토큰으로 캐시를 갱신해, 확인 직후의 발송이 이
+     * 토큰을 그대로 재사용할 수 있게 한다(불필요한 재발급 방지).
+     *
+     * @return string 새로 발급받은 Bearer 액세스 토큰
+     *
+     * @throws BizppurioApiException 자격증명 미설정·HTTP 실패·응답 파싱 실패 시
+     */
+    public function verifyCredentials(): string
+    {
+        $token = $this->issueToken();
+
+        $this->cache->put(self::CACHE_KEY, $token, self::CACHE_TTL_SECONDS);
+
+        return $token;
+    }
+
+    /**
      * `/v1/token` 을 호출해 새 토큰을 발급받습니다.
      *
      * @return string Bearer 액세스 토큰
@@ -119,7 +140,8 @@ class BizppurioTokenService
 
         if ($response->failed()) {
             throw new BizppurioApiException(
-                __('sirsoft-message_bizppurio::messages.error.token_issue_failed'),
+                $this->describeFailure($response),
+                resultCode: (string) ($response->json('code') ?? '') ?: null,
                 httpStatus: $response->status(),
             );
         }
@@ -128,12 +150,37 @@ class BizppurioTokenService
 
         if ($token === '') {
             throw new BizppurioApiException(
-                __('sirsoft-message_bizppurio::messages.error.token_issue_failed'),
+                $this->describeFailure($response),
+                resultCode: (string) ($response->json('code') ?? '') ?: null,
                 httpStatus: $response->status(),
             );
         }
 
         return $token;
+    }
+
+    /**
+     * 토큰 발급 실패 응답에서 비즈뿌리오 원문 사유를 담은 메시지를 만듭니다.
+     *
+     * 비즈뿌리오는 실패 시 `{"code": "3007", "description": "invalid password in
+     * bizppurio"}` 형태로 원인을 내려준다. 원문이 있으면 함께 노출해 운영자가 계정/
+     * 비밀번호 오류인지 서버 오류인지 즉시 구분할 수 있게 한다(고정 문구만으로는
+     * 원인 추적이 불가능했던 문제 대응).
+     *
+     * @param  \Illuminate\Http\Client\Response  $response  실패한 HTTP 응답
+     * @return string 사용자에게 보여줄 실패 메시지
+     */
+    private function describeFailure(\Illuminate\Http\Client\Response $response): string
+    {
+        $description = (string) ($response->json('description') ?? '');
+
+        if ($description === '') {
+            return __('sirsoft-message_bizppurio::messages.error.token_issue_failed');
+        }
+
+        return __('sirsoft-message_bizppurio::messages.error.token_issue_failed_with_reason', [
+            'reason' => $description,
+        ]);
     }
 
     /**
