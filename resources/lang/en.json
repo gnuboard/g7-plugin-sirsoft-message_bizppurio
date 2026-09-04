@@ -204,7 +204,7 @@
       "btn_save": "Save",
       "btn_save_request": "Save & request inspection",
       "request_comment": "Note to reviewer",
-      "request_comment_placeholder": "e.g. #{name}=Jane Doe, #{order_number}=20260823-0001",
+      "request_comment_placeholder": "e.g. #{name}=Jane Doe, #{order_number}=20260823-1043226571",
       "request_comment_hint": "Sent to the Kakao reviewer together with the inspection request (optional, up to 500 characters). Kakao review guidelines ask for an example value per body variable, so listing them here reduces rejections. It is not stored — it is only sent when you request inspection.",
       "saved_toast": "Notification template saved.",
       "requested_toast": "Inspection requested. Alimtalk delivery starts once approved."

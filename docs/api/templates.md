@@ -684,7 +684,7 @@ Content-Type: application/json
 Authorization: Bearer {YOUR_TOKEN}
 
 {
-    "comment": "변수 예시: #{name}=홍길동, #{order_number}=20260823-0001"
+    "comment": "변수 예시: #{name}=홍길동, #{order_number}=20260823-1043226571"
 }
 ```
 
